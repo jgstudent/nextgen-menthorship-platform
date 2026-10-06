@@ -9,6 +9,7 @@ An independent copy of the NextGen Haitian Empowerment Portal, with mentorship i
 - [Verified architecture discovery](docs/mentorship/ARCHITECTURE_DISCOVERY.md)
 - [Validation results and limitations](docs/mentorship/VALIDATION.md)
 - [Phase 0 completion and file inventory](docs/mentorship/COMPLETION_REPORT.md)
+- [Isolated staging containers](docs/STAGING_CONTAINERS.md)
 
 ## Current scope
 
@@ -16,7 +17,7 @@ The imported portal includes authentication, dashboard, organizations, workspace
 
 The current staging release includes program and cohort configuration, public and administrative applications, approvals, matching, formal relationships, goals, sessions, attendance, participant self-service, monitoring and exportable reports, a shared Resource Center, verified service hours, and explicit stipend decisions. Mentorship remains an optional per-organization add-on.
 
-The frozen release is `v0.1.0-staging.1`. See [its release record](docs/releases/v0.1.0-staging.1.md) for scope, verification, and remaining container work.
+The frozen release is `v0.1.0-staging.1`. See [its release record](docs/releases/v0.1.0-staging.1.md) for scope and verification. Container deployment work continues in later commits so the frozen tag remains immutable.
 
 ## Independent local development
 

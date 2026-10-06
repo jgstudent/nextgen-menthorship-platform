@@ -1,0 +1,178 @@
+name: nextgen-mentorship-staging
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nextgen_mentorship
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Create .env.staging first}
+      POSTGRES_DB: nextgen_mentorship
+    volumes:
+      - staging-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nextgen_mentorship -d nextgen_mentorship"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - staging-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend
+
+  object-storage:
+    image: chrislusf/seaweedfs:4.47@sha256:ce9e796f1fe6f06968f4c04bdaf8f678dad9c8acdfef3d244133d71bfa6bf882
+    command: ["mini", "-dir=/data", "-webdav=false", "-admin.ui=false"]
+    restart: unless-stopped
+    environment:
+      AWS_ACCESS_KEY_ID: ${MINIO_ACCESS_KEY:?Create .env.staging first}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_SECRET_KEY:?Create .env.staging first}
+      S3_BUCKET: ${MINIO_BUCKET:-nextgen-mentorship-files}
+    ports:
+      - "127.0.0.1:${STAGING_STORAGE_PORT:-59000}:8333"
+    volumes:
+      - staging-object-storage-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8333/readyz"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 12
+    networks:
+      - backend
+
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: nextgen-mentorship-api:${RELEASE_VERSION:-staging}
+    restart: "no"
+    command:
+      - node
+      - apps/api/node_modules/prisma/build/index.js
+      - migrate
+      - deploy
+      - --schema
+      - apps/api/prisma/schema.prisma
+    environment: &api-environment
+      DATABASE_URL: postgresql://nextgen_mentorship:${POSTGRES_PASSWORD}@postgres:5432/nextgen_mentorship?schema=public
+      PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING: "1"
+      PRISMA_QUERY_ENGINE_LIBRARY: /app/prisma-engines/libquery_engine.so.node
+      JWT_SECRET: ${JWT_SECRET:?Create .env.staging first}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-1d}
+      API_PORT: 4100
+      WEB_APP_URL: ${STAGING_WEB_ORIGIN:-http://localhost:3100}
+      MINIO_ENDPOINT: object-storage
+      MINIO_PORT: 8333
+      MINIO_USE_SSL: "false"
+      MINIO_PUBLIC_ENDPOINT: ${STAGING_PUBLIC_HOST:-localhost}
+      MINIO_PUBLIC_PORT: ${STAGING_STORAGE_PORT:-59000}
+      MINIO_PUBLIC_USE_SSL: ${STAGING_PUBLIC_USE_SSL:-false}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET: ${MINIO_BUCKET:-nextgen-mentorship-files}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@nextgen.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Create .env.staging first}
+      DOCUSEAL_BASE_URL: ${DOCUSEAL_BASE_URL:-}
+      DOCUSEAL_API_KEY: ${DOCUSEAL_API_KEY:-}
+      DOCUSEAL_WEBHOOK_SECRET: ${DOCUSEAL_WEBHOOK_SECRET:-}
+      EMAIL_DELIVERY_URL: ${EMAIL_DELIVERY_URL:-}
+      EMAIL_DELIVERY_TOKEN: ${EMAIL_DELIVERY_TOKEN:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+      - frontend
+
+  bootstrap:
+    image: nextgen-mentorship-api:${RELEASE_VERSION:-staging}
+    restart: "no"
+    command:
+      - node
+      - apps/api/node_modules/tsx/dist/cli.mjs
+      - apps/api/prisma/seed.ts
+    environment: *api-environment
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - backend
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: nextgen-mentorship-api:${RELEASE_VERSION:-staging}
+    restart: unless-stopped
+    environment: *api-environment
+    ports:
+      - "127.0.0.1:${STAGING_API_PORT:-4100}:4100"
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      object-storage:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:4100/api/health"]
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
+      retries: 12
+    networks:
+      - backend
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: /api
+        API_INTERNAL_URL: http://api:4100/api
+    image: nextgen-mentorship-web:${RELEASE_VERSION:-staging}
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: /api
+      API_INTERNAL_URL: http://api:4100/api
+      HOSTNAME: 0.0.0.0
+      PORT: 3100
+    ports:
+      - "${STAGING_WEB_PORT:-3100}:3100"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3100/login').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
+      retries: 12
+    networks:
+      - frontend
+      - backend
+
+networks:
+  frontend:
+  backend:
+    internal: true
+
+volumes:
+  staging-postgres-data:
+  staging-redis-data:
+  staging-object-storage-data:

@@ -3,6 +3,8 @@ node_modules
 dist
 coverage
 .env
+.env.staging
+.docker-local/
 .env.local
 .env.*
 !.env.example

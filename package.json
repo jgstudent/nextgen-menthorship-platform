@@ -14,7 +14,13 @@
     "db:deploy": "pnpm --filter @nextgen/api exec prisma migrate deploy",
     "db:seed": "pnpm --filter @nextgen/api prisma:seed",
     "db:reset-admin": "pnpm --filter @nextgen/api prisma:reset-admin",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "staging:env": "node scripts/setup-staging-env.mjs",
+    "staging:config": "docker compose --env-file .env.staging -f docker-compose.staging.yml config",
+    "staging:build": "docker compose --env-file .env.staging -f docker-compose.staging.yml build",
+    "staging:up": "docker compose --env-file .env.staging -f docker-compose.staging.yml up -d --build",
+    "staging:down": "docker compose --env-file .env.staging -f docker-compose.staging.yml down",
+    "staging:logs": "docker compose --env-file .env.staging -f docker-compose.staging.yml logs -f"
   },
   "devDependencies": {
     "typescript": "^5.6.3"

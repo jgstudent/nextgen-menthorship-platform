@@ -18,7 +18,10 @@ export class MinioStorageService {
   private readonly port: number;
   private readonly accessKey: string;
   private readonly secretKey: string;
-  private readonly useSSL = false;
+  private readonly useSSL: boolean;
+  private readonly publicEndpoint: string;
+  private readonly publicPort: number;
+  private readonly publicUseSSL: boolean;
   private readonly region = "us-east-1";
 
   constructor(config: ConfigService) {
@@ -26,6 +29,10 @@ export class MinioStorageService {
     this.port = Number(config.get<string>("MINIO_PORT") ?? 9000);
     this.accessKey = config.get<string>("MINIO_ACCESS_KEY") ?? "";
     this.secretKey = config.get<string>("MINIO_SECRET_KEY") ?? "";
+    this.useSSL = config.get<string>("MINIO_USE_SSL") === "true";
+    this.publicEndpoint = config.get<string>("MINIO_PUBLIC_ENDPOINT") ?? this.endpoint;
+    this.publicPort = Number(config.get<string>("MINIO_PUBLIC_PORT") ?? this.port);
+    this.publicUseSSL = config.get<string>("MINIO_PUBLIC_USE_SSL") === "true";
   }
 
   async ensureBucket(bucket: string) {
@@ -59,7 +66,7 @@ export class MinioStorageService {
     const credentialScope = `${dateStamp}/${this.region}/s3/aws4_request`;
     const encodedKey = encodeObjectKey(objectKey);
     const credential = `${this.accessKey}/${credentialScope}`;
-    const host = `${this.endpoint}:${this.port}`;
+    const host = `${this.publicEndpoint}:${this.publicPort}`;
     const params = new URLSearchParams({
       "X-Amz-Algorithm": "AWS4-HMAC-SHA256",
       "X-Amz-Credential": credential,
@@ -73,7 +80,7 @@ export class MinioStorageService {
     const stringToSign = ["AWS4-HMAC-SHA256", amzDate, credentialScope, sha256(canonicalRequest)].join("\n");
     const signature = hmacHex(signingKey(this.secretKey, dateStamp, this.region), stringToSign);
 
-    return `${this.useSSL ? "https" : "http"}://${host}/${bucket}/${encodedKey}?${canonicalQuery}&X-Amz-Signature=${signature}`;
+    return `${this.publicUseSSL ? "https" : "http"}://${host}/${bucket}/${encodedKey}?${canonicalQuery}&X-Amz-Signature=${signature}`;
   }
 
   private request(options: RequestOptions) {

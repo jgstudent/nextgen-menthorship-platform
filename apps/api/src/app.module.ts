@@ -20,6 +20,7 @@ import { TasksModule } from "./modules/tasks/tasks.module";
 import { UsersModule } from "./modules/users/users.module";
 import { WorkshopsModule } from "./modules/workshops/workshops.module";
 import { WorkspacesModule } from "./modules/workspaces/workspaces.module";
+import { HealthController } from "./health.controller";
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { WorkspacesModule } from "./modules/workspaces/workspaces.module";
     BeneficiariesModule,
     WorkshopsModule,
     DashboardModule
-  ]
+  ],
+  controllers: [HealthController]
 })
 export class AppModule {}
