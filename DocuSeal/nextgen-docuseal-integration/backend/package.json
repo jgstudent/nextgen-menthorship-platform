@@ -1,0 +1,10 @@
+{
+  "name": "@nextgen-docuseal/backend-module",
+  "version": "0.1.0",
+  "private": true,
+  "description": "NestJS DocumentsModule source bundle for the main NextGen API. This is not a standalone backend service.",
+  "scripts": {
+    "dev": "echo \"This backend folder is a module bundle. Run the main API from ../../.. with: pnpm dev\"",
+    "build": "echo \"Build the main platform API from ../../.. with: pnpm --filter @nextgen/api build\""
+  }
+}

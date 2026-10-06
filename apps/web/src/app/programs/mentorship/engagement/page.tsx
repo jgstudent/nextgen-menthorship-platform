@@ -1,0 +1,117 @@
+"use client";
+
+import { FormEvent, useMemo, useState } from "react";
+import Link from "next/link";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { BarChart3, CalendarPlus, CheckCircle2, Clock3, NotebookPen, Target, UsersRound } from "lucide-react";
+import { AccessDenied } from "@/components/auth/access-denied";
+import { useAuth } from "@/components/auth/auth-provider";
+import { PageHeader } from "@/components/layout/page-header";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Dialog } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { api } from "@/lib/api";
+import { canPreviewMentorship } from "@/lib/permissions";
+import type { MentorshipAttendanceStatus, MentorshipGoal, MentorshipGoalStatus, MentorshipMeetingMode, MentorshipProgram, MentorshipRelationship, MentorshipSession, MentorshipSessionStatus } from "@/types/mentorship";
+
+const attendanceOptions: MentorshipAttendanceStatus[] = ["PENDING", "ATTENDED", "ABSENT", "EXCUSED"];
+const sessionStatuses: MentorshipSessionStatus[] = ["SCHEDULED", "COMPLETED", "NO_SHOW", "CANCELLED"];
+
+export default function MentorshipEngagementPage() {
+  const { user } = useAuth();
+  const allowed = canPreviewMentorship(user?.role);
+  const client = useQueryClient();
+  const [programId, setProgramId] = useState("");
+  const [relationshipId, setRelationshipId] = useState("");
+  const [goalDialog, setGoalDialog] = useState(false);
+  const [sessionDialog, setSessionDialog] = useState(false);
+  const [progressDialog, setProgressDialog] = useState(false);
+  const [goal, setGoal] = useState({ title: "", description: "", targetDate: "" });
+  const [session, setSession] = useState({ title: "", scheduledStart: "", scheduledEnd: "", meetingMode: "VIRTUAL" as MentorshipMeetingMode, location: "", videoUrl: "", agenda: "" });
+  const [progress, setProgress] = useState({ summary: "", challenges: "", nextSteps: "", progressRating: "" });
+  const [error, setError] = useState<string>();
+  const programsQuery = useQuery({ queryKey: ["mentorship", "programs"], queryFn: () => api<MentorshipProgram[]>("/mentorship/programs"), enabled: Boolean(user) && allowed });
+  const programs = programsQuery.data ?? [];
+  const selectedProgram = programs.find((item) => item.id === programId) ?? programs[0];
+  const selectedProgramId = selectedProgram?.id ?? "";
+  const relationshipsQuery = useQuery({ queryKey: ["mentorship", "relationships", selectedProgramId], queryFn: () => api<MentorshipRelationship[]>(`/mentorship/programs/${selectedProgramId}/relationships`), enabled: Boolean(user) && allowed && Boolean(selectedProgramId) });
+  const relationships = relationshipsQuery.data ?? [];
+  const selected = relationships.find((item) => item.id === relationshipId) ?? relationships[0];
+  const refresh = () => client.invalidateQueries({ queryKey: ["mentorship", "relationships", selectedProgramId] });
+  const mutationOptions = { onSuccess: async () => { setError(undefined); await refresh(); }, onError: (caught: unknown) => setError(messageFrom(caught)) };
+  const createGoal = useMutation({ mutationFn: (body: Record<string, unknown>) => api(`/mentorship/programs/${selectedProgramId}/relationships/${selected?.id}/goals`, { method: "POST", body: JSON.stringify(body) }), ...mutationOptions });
+  const updateGoal = useMutation({ mutationFn: ({ id, body }: { id: string; body: Record<string, unknown> }) => api(`/mentorship/programs/${selectedProgramId}/relationships/${selected?.id}/goals/${id}`, { method: "PATCH", body: JSON.stringify(body) }), ...mutationOptions });
+  const createSession = useMutation({ mutationFn: (body: Record<string, unknown>) => api(`/mentorship/programs/${selectedProgramId}/relationships/${selected?.id}/sessions`, { method: "POST", body: JSON.stringify(body) }), ...mutationOptions });
+  const updateSession = useMutation({ mutationFn: ({ id, body }: { id: string; body: Record<string, unknown> }) => api(`/mentorship/programs/${selectedProgramId}/relationships/${selected?.id}/sessions/${id}`, { method: "PATCH", body: JSON.stringify(body) }), ...mutationOptions });
+  const createProgress = useMutation({ mutationFn: (body: Record<string, unknown>) => api(`/mentorship/programs/${selectedProgramId}/relationships/${selected?.id}/progress`, { method: "POST", body: JSON.stringify(body) }), ...mutationOptions });
+  const totals = useMemo(() => {
+    const completedSessions = selected?.sessions.filter((item) => item.status === "COMPLETED") ?? [];
+    return { sessions: completedSessions.length, minutes: completedSessions.reduce((sum, item) => sum + item.completedMinutes, 0), completedGoals: selected?.goals.filter((item) => item.status === "COMPLETED").length ?? 0 };
+  }, [selected]);
+
+  if (!user) return null;
+  if (!allowed) return <AccessDenied />;
+
+  function submitGoal(event: FormEvent) { event.preventDefault(); createGoal.mutate({ title: goal.title, description: goal.description || undefined, targetDate: goal.targetDate || undefined }, { onSuccess: () => { setGoalDialog(false); setGoal({ title: "", description: "", targetDate: "" }); } }); }
+  function submitSession(event: FormEvent) { event.preventDefault(); createSession.mutate({ ...session, location: session.location || undefined, videoUrl: session.videoUrl || undefined, agenda: session.agenda || undefined }, { onSuccess: () => { setSessionDialog(false); setSession({ title: "", scheduledStart: "", scheduledEnd: "", meetingMode: "VIRTUAL", location: "", videoUrl: "", agenda: "" }); } }); }
+  function submitProgress(event: FormEvent) { event.preventDefault(); createProgress.mutate({ summary: progress.summary, challenges: progress.challenges || undefined, nextSteps: progress.nextSteps || undefined, progressRating: progress.progressRating ? Number(progress.progressRating) : undefined }, { onSuccess: () => { setProgressDialog(false); setProgress({ summary: "", challenges: "", nextSteps: "", progressRating: "" }); } }); }
+
+  return <>
+    <nav className="mb-4 text-sm text-[var(--text-secondary)]"><Link href="/programs/mentorship" className="hover:underline">Mentorship</Link><span> / Engagement</span></nav>
+    <PageHeader title="Mentorship engagement" description="Track goals, sessions, attendance, hours, and progress for approved relationships." actions={<div className="flex flex-wrap gap-2"><Link href="/programs/mentorship/participants" className="inline-flex h-10 items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--card)] px-4 text-sm font-semibold"><UsersRound className="h-4 w-4" /> Participants</Link><Link href="/programs/mentorship/monitoring" className="inline-flex h-10 items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--card)] px-4 text-sm font-semibold"><BarChart3 className="h-4 w-4" /> Reports</Link></div>} />
+    {error ? <Card className="mb-5 border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</Card> : null}
+    <Card className="mb-5 p-4"><div className="grid gap-3 sm:grid-cols-2"><Select aria-label="Program" value={selectedProgramId} onChange={(event) => { setProgramId(event.target.value); setRelationshipId(""); }}><option value="" disabled>Select program</option>{programs.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</Select><Select aria-label="Relationship" value={selected?.id ?? ""} onChange={(event) => setRelationshipId(event.target.value)}><option value="" disabled>Select relationship</option>{relationships.map((item) => <option key={item.id} value={item.id}>{item.provider.application.firstName} {item.provider.application.lastName} → {item.mentee.application.firstName} {item.mentee.application.lastName} · {item.cohort.name}</option>)}</Select></div></Card>
+    {relationshipsQuery.isLoading ? <Card className="p-8 text-center">Loading engagement records…</Card> : !selected ? <Card className="border-dashed p-10 text-center"><UsersRound className="mx-auto h-9 w-9 text-[var(--primary-blue)]" /><h2 className="mt-3 font-semibold">No approved relationships yet</h2><p className="mt-1 text-sm text-[var(--text-secondary)]">Approve a matching recommendation before recording engagement.</p></Card> : <div className="space-y-5">
+      <Card className="p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex items-center gap-2"><h2 className="text-lg font-semibold">{selected.provider.application.firstName} {selected.provider.application.lastName} → {selected.mentee.application.firstName} {selected.mentee.application.lastName}</h2><Badge tone={selected.status === "ACTIVE" ? "green" : "gold"}>{label(selected.status)}</Badge></div><p className="mt-1 text-sm text-[var(--text-secondary)]">{label(selected.provider.role)} with Mentee · {selected.cohort.name} · {selected.match.score}% match</p></div><div className="flex flex-wrap gap-2"><Button type="button" onClick={() => setGoalDialog(true)}><Target className="h-4 w-4" /> Add goal</Button><Button type="button" onClick={() => setSessionDialog(true)}><CalendarPlus className="h-4 w-4" /> Schedule session</Button><Button type="button" onClick={() => setProgressDialog(true)}><NotebookPen className="h-4 w-4" /> Progress update</Button></div></div></Card>
+      <div className="grid gap-3 sm:grid-cols-4"><Metric label="Completed sessions" value={`${totals.sessions} / ${selected.cohort.minimumSessions}`} /><Metric label="Completed hours" value={`${(totals.minutes / 60).toFixed(1)} / ${selected.cohort.expectedHours}`} /><Metric label="Completed goals" value={`${totals.completedGoals} / ${selected.goals.length}`} /><Metric label="Progress updates" value={String(selected.progressUpdates.length)} /></div>
+      <section><h2 className="mb-3 text-lg font-semibold">Goals</h2>{selected.goals.length ? <div className="grid gap-3 lg:grid-cols-2">{selected.goals.map((item) => <GoalCard key={item.id} goal={item} pending={updateGoal.isPending} onUpdate={(body) => updateGoal.mutate({ id: item.id, body })} />)}</div> : <Empty text="No goals recorded for this relationship." />}</section>
+      <section><h2 className="mb-3 text-lg font-semibold">Sessions and attendance</h2>{selected.sessions.length ? <div className="space-y-3">{selected.sessions.map((item) => <SessionCard key={item.id} session={item} pending={updateSession.isPending} onUpdate={(body) => updateSession.mutate({ id: item.id, body })} />)}</div> : <Empty text="No sessions scheduled for this relationship." />}</section>
+      <section><h2 className="mb-3 text-lg font-semibold">Progress history</h2>{selected.progressUpdates.length ? <div className="space-y-3">{selected.progressUpdates.map((item) => <Card key={item.id} className="p-4"><div className="flex justify-between gap-3"><p className="font-semibold">{item.summary}</p>{item.progressRating ? <Badge tone="blue">{item.progressRating}/5</Badge> : null}</div>{item.challenges ? <p className="mt-2 text-sm"><span className="text-[var(--text-secondary)]">Challenges: </span>{item.challenges}</p> : null}{item.nextSteps ? <p className="mt-2 text-sm"><span className="text-[var(--text-secondary)]">Next steps: </span>{item.nextSteps}</p> : null}<p className="mt-2 text-xs text-[var(--text-secondary)]">{item.author.firstName} {item.author.lastName} · {formatDateTime(item.createdAt)}</p></Card>)}</div> : <Empty text="No progress updates recorded." />}</section>
+    </div>}
+
+    <Dialog open={goalDialog} title="Add mentorship goal" description="Define a measurable outcome for this relationship." onClose={() => setGoalDialog(false)}><form className="space-y-4" onSubmit={submitGoal}><Input placeholder="Goal title" value={goal.title} onChange={(event) => setGoal({ ...goal, title: event.target.value })} required /><Textarea placeholder="Description" value={goal.description} onChange={(event) => setGoal({ ...goal, description: event.target.value })} /><label className="text-sm text-[var(--text-secondary)]">Target date<Input className="mt-1" type="date" value={goal.targetDate} onChange={(event) => setGoal({ ...goal, targetDate: event.target.value })} /></label><Button type="submit" disabled={createGoal.isPending}>{createGoal.isPending ? "Saving…" : "Add goal"}</Button></form></Dialog>
+    <Dialog open={sessionDialog} title="Schedule mentorship session" description="The mentor or tutor and mentee will receive the session details." onClose={() => setSessionDialog(false)}><form className="space-y-4" onSubmit={submitSession}><Input placeholder="Session title" value={session.title} onChange={(event) => setSession({ ...session, title: event.target.value })} required /><div className="grid gap-3 sm:grid-cols-2"><label className="text-sm text-[var(--text-secondary)]">Start<Input className="mt-1" type="datetime-local" value={session.scheduledStart} onChange={(event) => setSession({ ...session, scheduledStart: event.target.value })} required /></label><label className="text-sm text-[var(--text-secondary)]">End<Input className="mt-1" type="datetime-local" value={session.scheduledEnd} onChange={(event) => setSession({ ...session, scheduledEnd: event.target.value })} required /></label></div><Select value={session.meetingMode} onChange={(event) => setSession({ ...session, meetingMode: event.target.value as MentorshipMeetingMode })}><option value="VIRTUAL">Virtual</option><option value="IN_PERSON">In person</option><option value="HYBRID">Hybrid</option></Select><Input placeholder="Location (optional)" value={session.location} onChange={(event) => setSession({ ...session, location: event.target.value })} /><Input type="url" placeholder="Video meeting link (optional)" value={session.videoUrl} onChange={(event) => setSession({ ...session, videoUrl: event.target.value })} /><Textarea placeholder="Agenda" value={session.agenda} onChange={(event) => setSession({ ...session, agenda: event.target.value })} /><Button type="submit" disabled={createSession.isPending}>{createSession.isPending ? "Scheduling…" : "Schedule session"}</Button></form></Dialog>
+    <Dialog open={progressDialog} title="Add progress update" description="Record accomplishments, challenges, and next steps." onClose={() => setProgressDialog(false)}><form className="space-y-4" onSubmit={submitProgress}><Textarea placeholder="Progress summary" value={progress.summary} onChange={(event) => setProgress({ ...progress, summary: event.target.value })} required /><Textarea placeholder="Challenges" value={progress.challenges} onChange={(event) => setProgress({ ...progress, challenges: event.target.value })} /><Textarea placeholder="Next steps" value={progress.nextSteps} onChange={(event) => setProgress({ ...progress, nextSteps: event.target.value })} /><Select value={progress.progressRating} onChange={(event) => setProgress({ ...progress, progressRating: event.target.value })}><option value="">Progress rating (optional)</option>{[1,2,3,4,5].map((value) => <option key={value} value={value}>{value} / 5</option>)}</Select><Button type="submit" disabled={createProgress.isPending}>{createProgress.isPending ? "Saving…" : "Save update"}</Button></form></Dialog>
+  </>;
+}
+
+function GoalCard({ goal, pending, onUpdate }: { goal: MentorshipGoal; pending: boolean; onUpdate: (body: Record<string, unknown>) => void }) { return <Card className="p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-semibold">{goal.title}</p>{goal.description ? <p className="mt-1 text-sm text-[var(--text-secondary)]">{goal.description}</p> : null}</div><Badge tone={goal.status === "COMPLETED" ? "green" : goal.status === "IN_PROGRESS" ? "blue" : "gray"}>{label(goal.status)}</Badge></div><div className="mt-3 grid gap-2 sm:grid-cols-2"><Select aria-label={`${goal.title} status`} value={goal.status} disabled={pending} onChange={(event) => onUpdate({ status: event.target.value as MentorshipGoalStatus })}><option value="NOT_STARTED">Not started</option><option value="IN_PROGRESS">In progress</option><option value="COMPLETED">Completed</option><option value="CANCELLED">Cancelled</option></Select><Select aria-label={`${goal.title} progress`} value={goal.progressPercent} disabled={pending || goal.status === "COMPLETED"} onChange={(event) => onUpdate({ progressPercent: Number(event.target.value) })}>{[0,25,50,75,100].map((value) => <option key={value} value={value}>{value}% complete</option>)}</Select></div>{goal.targetDate ? <p className="mt-2 text-xs text-[var(--text-secondary)]">Target: {formatDate(goal.targetDate)}</p> : null}</Card>; }
+function SessionCard({ session, pending, onUpdate }: { session: MentorshipSession; pending: boolean; onUpdate: (body: Record<string, unknown>) => void }) {
+  const scheduledMinutes = Math.max(1, Math.round((new Date(session.scheduledEnd).getTime() - new Date(session.scheduledStart).getTime()) / 60000));
+  const [completedMinutes, setCompletedMinutes] = useState(String(session.completedMinutes || scheduledMinutes));
+  const [notes, setNotes] = useState(session.notes ?? "");
+  const locked = pending || session.status === "COMPLETED";
+  const sessionDetails = { completedMinutes: Number(completedMinutes), notes: notes.trim() || undefined };
+
+  return <Card className="p-4">
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <div className="flex items-center gap-2"><Clock3 className="h-4 w-4 text-[var(--primary-blue)]" /><p className="font-semibold">{session.title}</p><Badge tone={session.status === "COMPLETED" ? "green" : session.status === "SCHEDULED" ? "blue" : "gray"}>{label(session.status)}</Badge></div>
+        <p className="mt-1 text-sm text-[var(--text-secondary)]">{formatDateTime(session.scheduledStart)} – {formatTime(session.scheduledEnd)} · {label(session.meetingMode)}</p>
+        {session.agenda ? <p className="mt-2 text-sm">{session.agenda}</p> : null}
+      </div>
+      {session.status === "COMPLETED" ? <div className="text-right"><CheckCircle2 className="ml-auto h-5 w-5 text-emerald-600" /><p className="mt-1 text-sm font-semibold">{session.completedMinutes} minutes</p></div> : null}
+    </div>
+    <div className="mt-3 grid gap-2 sm:grid-cols-3">
+      <label className="text-xs text-[var(--text-secondary)]">Provider attendance<Select className="mt-1" value={session.providerAttendance} disabled={locked} onChange={(event) => onUpdate({ providerAttendance: event.target.value as MentorshipAttendanceStatus })}>{attendanceOptions.map((item) => <option key={item} value={item}>{label(item)}</option>)}</Select></label>
+      <label className="text-xs text-[var(--text-secondary)]">Mentee attendance<Select className="mt-1" value={session.menteeAttendance} disabled={locked} onChange={(event) => onUpdate({ menteeAttendance: event.target.value as MentorshipAttendanceStatus })}>{attendanceOptions.map((item) => <option key={item} value={item}>{label(item)}</option>)}</Select></label>
+      <label className="text-xs text-[var(--text-secondary)]">Session status<Select className="mt-1" value={session.status} disabled={locked} onChange={(event) => onUpdate(event.target.value === "COMPLETED" ? { status: "COMPLETED" as MentorshipSessionStatus, ...sessionDetails } : { status: event.target.value as MentorshipSessionStatus })}>{sessionStatuses.map((item) => <option key={item} value={item}>{label(item)}</option>)}</Select></label>
+    </div>
+    <div className="mt-3 grid gap-3 sm:grid-cols-[180px_1fr_auto] sm:items-end">
+      <label className="text-xs text-[var(--text-secondary)]">Completed minutes<Input className="mt-1" type="number" min={1} max={1440} value={completedMinutes} disabled={locked} onChange={(event) => setCompletedMinutes(event.target.value)} /></label>
+      <label className="text-xs text-[var(--text-secondary)]">Session notes<Textarea className="mt-1 min-h-20" placeholder="Outcomes, discussion notes, or follow-up details" value={notes} disabled={locked} onChange={(event) => setNotes(event.target.value)} /></label>
+      {session.status !== "COMPLETED" ? <Button type="button" disabled={pending || !completedMinutes || Number(completedMinutes) < 1} onClick={() => onUpdate(sessionDetails)}>Save details</Button> : null}
+    </div>
+  </Card>;
+}
+function Metric({ label: text, value }: { label: string; value: string }) { return <Card className="p-4"><p className="text-xs font-semibold uppercase text-[var(--text-secondary)]">{text}</p><p className="mt-1 text-2xl font-bold">{value}</p></Card>; }
+function Empty({ text }: { text: string }) { return <Card className="border-dashed p-6 text-center text-sm text-[var(--text-secondary)]">{text}</Card>; }
+function formatDate(value: string) { return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(new Date(value)); }
+function formatDateTime(value: string) { return new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)); }
+function formatTime(value: string) { return new Intl.DateTimeFormat("en-US", { timeStyle: "short" }).format(new Date(value)); }
+function label(value: string) { return value.toLowerCase().replaceAll("_", " ").replace(/(^|\s)\S/g, (letter) => letter.toUpperCase()); }
+function messageFrom(value: unknown) { if (!(value instanceof Error)) return "The request could not be completed."; try { const parsed = JSON.parse(value.message) as { message?: string | string[] }; return Array.isArray(parsed.message) ? parsed.message.join(" ") : parsed.message ?? value.message; } catch { return value.message; } }

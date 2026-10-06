@@ -1,0 +1,124 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --background: #f8fafc;
+  --card: #ffffff;
+  --primary-navy: #0b1220;
+  --sidebar-navy: #111827;
+  --primary-blue: #1d4ed8;
+  --hover-blue: #2563eb;
+  --emerald: #10b981;
+  --gold: #d4a017;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --background-rgb: 248 250 252;
+  --foreground-rgb: 30 41 59;
+  --primary: #1d4ed8;
+  --primary-foreground: #ffffff;
+  --secondary: #64748b;
+  --accent: #10b981;
+  --accent-foreground: #0b1220;
+  --border: #e2e8f0;
+  --ring: #1d4ed8;
+}
+
+html.dark {
+  color-scheme: dark;
+  --background: #0b1220;
+  --card: #111827;
+  --primary-navy: #f8fafc;
+  --sidebar-navy: #050b16;
+  --primary-blue: #60a5fa;
+  --hover-blue: #93c5fd;
+  --emerald: #34d399;
+  --gold: #fbbf24;
+  --text-primary: #e5e7eb;
+  --text-secondary: #94a3b8;
+  --background-rgb: 11 18 32;
+  --foreground-rgb: 229 231 235;
+  --primary: #60a5fa;
+  --primary-foreground: #0b1220;
+  --secondary: #94a3b8;
+  --accent: #34d399;
+  --accent-foreground: #0b1220;
+  --border: #243044;
+  --ring: #60a5fa;
+}
+
+html {
+  background: var(--background);
+}
+
+body {
+  background: var(--background);
+  color: var(--text-primary);
+  text-rendering: optimizeLegibility;
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  outline-color: var(--ring);
+}
+
+::selection {
+  background: rgba(29, 78, 216, 0.16);
+}
+
+.dark .bg-\[\#F8FAFC\] {
+  background-color: #0b1220;
+}
+
+.dark .bg-\[\#FFFFFF\],
+.dark .bg-white,
+.dark .bg-white\/95 {
+  background-color: #111827;
+}
+
+.dark .text-\[\#0B1220\],
+.dark .text-\[\#1E293B\] {
+  color: #e5e7eb;
+}
+
+.dark .text-\[\#64748B\] {
+  color: #94a3b8;
+}
+
+.dark .border-\[\#E2E8F0\],
+.dark .border-\[\#CBD5E1\] {
+  border-color: #243044;
+}
+
+.dark .shadow-panel,
+.dark .shadow-soft {
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.32);
+}
+
+.sidebar-section-body {
+  animation: sidebar-section-open 160ms ease-out;
+}
+
+@keyframes sidebar-section-open {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--text-primary);
+  box-shadow: 0 0 0 1000px var(--card) inset;
+  transition: background-color 9999s ease-in-out 0s;
+}

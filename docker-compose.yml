@@ -1,0 +1,52 @@
+name: nextgen-mentorship
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nextgen_mentorship
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run node scripts/setup-local.mjs first}
+      POSTGRES_DB: nextgen_mentorship
+    ports:
+      - "127.0.0.1:56478:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nextgen_mentorship -d nextgen_mentorship"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:56379:6379"
+    volumes:
+      - redis-data:/data
+
+  object-storage:
+    image: chrislusf/seaweedfs:4.47@sha256:ce9e796f1fe6f06968f4c04bdaf8f678dad9c8acdfef3d244133d71bfa6bf882
+    command: ["mini", "-dir=/data", "-webdav=false", "-admin.ui=false"]
+    restart: unless-stopped
+    environment:
+      AWS_ACCESS_KEY_ID: ${MINIO_ACCESS_KEY:?Run node scripts/setup-local.mjs first}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_SECRET_KEY:?Run node scripts/setup-local.mjs first}
+      S3_BUCKET: ${MINIO_BUCKET:?Run node scripts/setup-local.mjs first}
+    ports:
+      - "127.0.0.1:59000:8333"
+    volumes:
+      - object-storage-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8333/readyz"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 12
+
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:
+  object-storage-data:

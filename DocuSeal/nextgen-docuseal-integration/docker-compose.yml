@@ -1,0 +1,14 @@
+services:
+  docuseal:
+    image: docuseal/docuseal:latest
+    restart: unless-stopped
+    ports:
+      - "3100:3000"
+    environment:
+      FORCE_SSL: "false"
+      SECRET_KEY_BASE: "replace-with-a-local-secret-key-base"
+    volumes:
+      - docuseal-data:/data
+
+volumes:
+  docuseal-data:

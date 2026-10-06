@@ -1,0 +1,10 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    { "label": "NextGen: local environment", "type": "shell", "command": "node scripts/setup-local.mjs", "problemMatcher": [] },
+    { "label": "NextGen: Docker services", "type": "shell", "command": "docker compose up -d --wait", "problemMatcher": [] },
+    { "label": "NextGen: develop", "type": "shell", "command": "npx --yes pnpm@9.12.0 dev", "isBackground": true, "problemMatcher": [] },
+    { "label": "NextGen: tests", "type": "shell", "command": "npx --yes pnpm@9.12.0 test", "group": "test", "problemMatcher": [] },
+    { "label": "NextGen: build", "type": "shell", "command": "npx --yes pnpm@9.12.0 build", "group": "build", "problemMatcher": [] }
+  ]
+}

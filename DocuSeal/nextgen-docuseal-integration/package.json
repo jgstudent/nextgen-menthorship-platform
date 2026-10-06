@@ -1,0 +1,20 @@
+{
+  "name": "nextgen-docuseal-integration",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DocuSeal integration module bundle and local signing-engine scaffold for the NextGen Empowerment Collaboration Hub.",
+  "scripts": {
+    "compose:up": "docker compose up -d",
+    "compose:down": "docker compose down",
+    "compose:logs": "docker compose logs -f",
+    "platform:install": "pnpm -C ../.. install",
+    "platform:services": "docker compose -f ../../docker-compose.yml up -d",
+    "platform:generate": "pnpm -C ../.. db:generate",
+    "platform:migrate": "pnpm -C ../.. db:migrate",
+    "platform:seed": "pnpm -C ../.. db:seed",
+    "platform:dev": "pnpm -C ../.. dev"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
