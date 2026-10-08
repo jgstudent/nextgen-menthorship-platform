@@ -86,10 +86,6 @@ export default function UsersPage() {
     onError: (error) => toast({ title: "Unable to reset password", description: error instanceof Error ? error.message : "Please try again.", tone: "error" })
   });
 
-  const placeholderMutation = useMutation({
-    mutationFn: ({ id, action }: { id: string; action: "invite" }) => api<{ success: boolean; message: string }>(`/users/${id}/${action}`, { method: "POST" })
-  });
-
   const users = useMemo(() => (data ?? []).filter((item) => {
     const haystack = `${item.email} ${item.firstName} ${item.lastName} ${item.role} ${item.status ?? ""}`.toLowerCase();
     return haystack.includes(search.toLowerCase()) && (roleFilter === "ALL" || item.role === roleFilter) && (statusFilter === "ALL" || item.status === statusFilter);
@@ -98,7 +94,7 @@ export default function UsersPage() {
   if (!canManageUsers(user?.role)) {
     return (
       <>
-        <PageHeader title="Users" description="Governance access is restricted to super admins and executives." />
+        <PageHeader title="Users" description="User login administration is restricted to the Super Admin." />
         <Card className="border-dashed p-8 text-center text-sm text-[#64748B]">You do not have access to user management.</Card>
       </>
     );
@@ -106,7 +102,7 @@ export default function UsersPage() {
 
   return (
     <>
-      <PageHeader title="Users" description="Manage identities, lifecycle status, role access, and scoped assignments." />
+      <PageHeader title="User access" description="The Super Admin creates logins, sets roles, resets passwords, and controls account status." />
       <div className="mb-5 grid gap-3 lg:grid-cols-[1fr_180px_210px_auto]">
         <label className="relative block">
           <Search className="absolute left-3 top-3 h-4 w-4 text-[#64748B]" />
@@ -157,7 +153,6 @@ export default function UsersPage() {
             <Detail label="Program assignments" value={selectedUser.programAssignments?.map((assignment) => `${assignment.program.name} (${roleLabel(assignment.role)})`).join(", ") || "None"} />
             <div className="flex flex-wrap gap-2 pt-2">
               {user?.role === "SUPER_ADMIN" ? <Button type="button" onClick={() => { setResetUser(selectedUser); setTemporaryPassword(""); }}>Reset Password</Button> : null}
-              <Button type="button" onClick={() => placeholderMutation.mutate({ id: selectedUser.id, action: "invite" })}>Invite</Button>
             </div>
           </div>
         ) : null}

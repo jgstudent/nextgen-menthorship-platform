@@ -81,6 +81,7 @@ export class UsersService {
   }
 
   async update(id: string, dto: UpdateUserDto, actor: AuthenticatedUser) {
+    this.assertSuperAdmin(actor);
     const current = await this.prisma.user.findUnique({ where: { id } });
     if (!current) {
       throw new NotFoundException("User not found.");
@@ -118,6 +119,7 @@ export class UsersService {
   }
 
   async setStatus(id: string, status: UserStatus, actor: AuthenticatedUser) {
+    this.assertSuperAdmin(actor);
     const current = await this.prisma.user.findUnique({ where: { id } });
     if (!current) {
       throw new NotFoundException("User not found.");
@@ -144,6 +146,7 @@ export class UsersService {
   }
 
   async invitePlaceholder(id: string, actor: AuthenticatedUser) {
+    this.assertSuperAdmin(actor);
     await this.ensureExists(id);
     await this.audit(actor, "user.invite_requested", "User", id);
     return { success: true, message: "Invite workflow placeholder recorded." };
@@ -152,6 +155,12 @@ export class UsersService {
   private assertCanSetRole(role: UserRole, actor: AuthenticatedUser) {
     if (actor.role !== UserRole.SUPER_ADMIN && role === UserRole.SUPER_ADMIN) {
       throw new ForbiddenException("Only super admins can create or assign super admin access.");
+    }
+  }
+
+  private assertSuperAdmin(actor: AuthenticatedUser) {
+    if (actor.role !== UserRole.SUPER_ADMIN) {
+      throw new ForbiddenException("Only super admins can manage user logins.");
     }
   }
 

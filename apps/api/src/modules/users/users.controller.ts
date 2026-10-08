@@ -12,7 +12,7 @@ import { UsersService } from "./users.service";
 
 @Controller("users")
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.SUPER_ADMIN, UserRole.EXECUTIVE)
+@Roles(UserRole.SUPER_ADMIN)
 export class UsersController {
   constructor(private readonly users: UsersService) {}
 
@@ -27,7 +27,6 @@ export class UsersController {
   }
 
   @Post()
-  @Roles(UserRole.SUPER_ADMIN)
   create(@Body() dto: CreateUserDto, @CurrentUser() actor: AuthenticatedUser) {
     return this.users.create(dto, actor);
   }
@@ -48,7 +47,6 @@ export class UsersController {
   }
 
   @Post(":id/reset-password")
-  @Roles(UserRole.SUPER_ADMIN)
   resetPassword(@Param("id") id: string, @Body() dto: ResetUserPasswordDto, @CurrentUser() actor: AuthenticatedUser) {
     return this.users.resetPassword(id, dto, actor);
   }

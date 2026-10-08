@@ -12,3 +12,7 @@ export function formatDate(value: string, locale = "en-US") {
     ...(isDateOnly ? { timeZone: "UTC" } : {})
   }).format(new Date(value));
 }
+
+export function toIsoDateTime(value: string) {
+  return new Date(value).toISOString();
+}

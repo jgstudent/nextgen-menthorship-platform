@@ -12,7 +12,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/components/auth/auth-provider";
 import { api } from "@/lib/api";
-import { formatDate } from "@/lib/date";
+import { formatDate, toIsoDateTime } from "@/lib/date";
 import type { MentorshipAssignmentStatus, MentorshipMeetingMode, MentorshipPortal, MentorshipResourceAssignmentStatus, MentorshipSession } from "@/types/mentorship";
 
 export default function MyMentorshipPage() {
@@ -75,7 +75,7 @@ export default function MyMentorshipPage() {
   function saveReschedule(event: FormEvent) {
     event.preventDefault();
     if (!sessionAction) return;
-    rescheduleSession.mutate({ id: sessionAction.session.id, body: reschedule }, { onSuccess: () => { setSessionAction(undefined); setReschedule({ scheduledStart: "", scheduledEnd: "", reason: "" }); setMessage("Session rescheduled."); } });
+    rescheduleSession.mutate({ id: sessionAction.session.id, body: { ...reschedule, scheduledStart: toIsoDateTime(reschedule.scheduledStart), scheduledEnd: toIsoDateTime(reschedule.scheduledEnd) } }, { onSuccess: () => { setSessionAction(undefined); setReschedule({ scheduledStart: "", scheduledEnd: "", reason: "" }); setMessage("Session rescheduled."); } });
   }
 
   function saveFeedback(event: FormEvent) {

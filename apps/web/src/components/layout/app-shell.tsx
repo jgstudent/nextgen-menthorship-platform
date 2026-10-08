@@ -4,7 +4,7 @@ import type { ComponentType, ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Activity, BarChart3, BookOpenCheck, ClipboardList, Clock3, ExternalLink, GraduationCap, LayoutDashboard, LogOut, Menu, Sparkles, UsersRound } from "lucide-react";
+import { Activity, BarChart3, BookOpenCheck, ClipboardList, Clock3, ExternalLink, GraduationCap, LayoutDashboard, LogOut, Menu, Settings, Sparkles, UsersRound } from "lucide-react";
 import { AccessDenied } from "@/components/auth/access-denied";
 import { Avatar } from "@/components/ui/avatar";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -17,6 +17,10 @@ type PilyeLink = { href: string; label: string; icon: ComponentType<{ className?
 
 const classroomLinks: PilyeLink[] = [
   { href: "/my-mentorship", label: "My classroom", icon: GraduationCap, exact: true }
+];
+
+const accountLinks: PilyeLink[] = [
+  { href: "/settings", label: "Settings", icon: Settings }
 ];
 
 const staffLinks: PilyeLink[] = [
@@ -45,8 +49,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const organization = organizationsQuery.data?.[0];
   const hasPilye = organization?.enabledAddOns?.includes("MENTORSHIP") ?? false;
   const isStaff = canPreviewMentorship(user?.role);
-  const links = isStaff ? [...classroomLinks, ...staffLinks] : classroomLinks;
-  const inPilye = pathname === "/my-mentorship" || Boolean(pathname?.startsWith("/my-mentorship/")) || pathname === "/programs/mentorship" || Boolean(pathname?.startsWith("/programs/mentorship/"));
+  const links = isStaff ? [...classroomLinks, ...staffLinks, ...accountLinks] : [...classroomLinks, ...accountLinks];
+  const inPilye = pathname === "/my-mentorship" || Boolean(pathname?.startsWith("/my-mentorship/")) || pathname === "/programs/mentorship" || Boolean(pathname?.startsWith("/programs/mentorship/")) || pathname === "/settings" || Boolean(pathname?.startsWith("/settings/")) || Boolean(isStaff && (pathname === "/users" || pathname?.startsWith("/users/")));
   const potayUrl = process.env.NEXT_PUBLIC_POTAY_URL ?? "https://portal.nextgenhaitian.org";
 
   return (

@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api";
-import { formatCalendarDate } from "@/lib/date";
+import { formatCalendarDate, toIsoDateTime } from "@/lib/date";
 import { canPreviewMentorship } from "@/lib/permissions";
 import type { MentorshipAttendanceStatus, MentorshipGoal, MentorshipGoalStatus, MentorshipMeetingMode, MentorshipProgram, MentorshipRelationship, MentorshipSession, MentorshipSessionStatus } from "@/types/mentorship";
 
@@ -65,7 +65,7 @@ export default function MentorshipEngagementPage() {
   if (!allowed) return <AccessDenied />;
 
   function submitGoal(event: FormEvent) { event.preventDefault(); createGoal.mutate({ title: goal.title, description: goal.description || undefined, targetDate: goal.targetDate || undefined }, { onSuccess: () => { setGoalDialog(false); setGoal({ title: "", description: "", targetDate: "" }); } }); }
-  function submitSession(event: FormEvent) { event.preventDefault(); createSession.mutate({ ...session, location: session.location || undefined, videoUrl: session.videoUrl || undefined, agenda: session.agenda || undefined }, { onSuccess: () => { setSessionDialog(false); setSession({ title: "", scheduledStart: "", scheduledEnd: "", meetingMode: "VIRTUAL", location: "", videoUrl: "", agenda: "" }); } }); }
+  function submitSession(event: FormEvent) { event.preventDefault(); createSession.mutate({ ...session, scheduledStart: toIsoDateTime(session.scheduledStart), scheduledEnd: toIsoDateTime(session.scheduledEnd), location: session.location || undefined, videoUrl: session.videoUrl || undefined, agenda: session.agenda || undefined }, { onSuccess: () => { setSessionDialog(false); setSession({ title: "", scheduledStart: "", scheduledEnd: "", meetingMode: "VIRTUAL", location: "", videoUrl: "", agenda: "" }); } }); }
   function submitProgress(event: FormEvent) { event.preventDefault(); createProgress.mutate({ summary: progress.summary, challenges: progress.challenges || undefined, nextSteps: progress.nextSteps || undefined, progressRating: progress.progressRating ? Number(progress.progressRating) : undefined }, { onSuccess: () => { setProgressDialog(false); setProgress({ summary: "", challenges: "", nextSteps: "", progressRating: "" }); } }); }
   function submitAssignment(event: FormEvent) { event.preventDefault(); createAssignment.mutate({ ...assignment, description: assignment.description || undefined, goalId: assignment.goalId || undefined, sessionId: assignment.sessionId || undefined, dueDate: assignment.dueDate || undefined }, { onSuccess: () => { setAssignmentDialog(false); setAssignment({ title: "", description: "", assigneeParticipantId: "", goalId: "", sessionId: "", dueDate: "" }); } }); }
   function submitNote(event: FormEvent) { event.preventDefault(); createNote.mutate(note, { onSuccess: () => { setNoteDialog(false); setNote({ body: "", visibility: "SHARED" }); } }); }
@@ -118,7 +118,7 @@ function SessionCard({ session, pending, onUpdate }: { session: MentorshipSessio
     <div className="mt-3 grid gap-3 sm:grid-cols-[180px_1fr_auto] sm:items-end">
       <label className="text-xs text-[var(--text-secondary)]">Completed minutes<Input className="mt-1" type="number" min={1} max={1440} value={completedMinutes} disabled={locked} onChange={(event) => setCompletedMinutes(event.target.value)} /></label>
       <label className="text-xs text-[var(--text-secondary)]">Session notes<Textarea className="mt-1 min-h-20" placeholder="Outcomes, discussion notes, or follow-up details" value={notes} disabled={locked} onChange={(event) => setNotes(event.target.value)} /></label>
-      {session.status !== "COMPLETED" ? <Button type="button" disabled={pending || !completedMinutes || Number(completedMinutes) < 1} onClick={() => onUpdate(sessionDetails)}>Save details</Button> : null}
+      {session.status !== "COMPLETED" ? <Button type="button" disabled={pending || !completedMinutes || Number(completedMinutes) < 1 || Number(completedMinutes) > 1440} onClick={() => onUpdate(sessionDetails)}>Save details</Button> : null}
     </div>
   </Card>;
 }
