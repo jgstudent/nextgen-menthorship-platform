@@ -5,8 +5,11 @@ import { ThemeScript } from "@/components/theme/theme-script";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "NextGen Empowerment Collaboration Hub",
-  description: "Secure collaboration and project management for NextGen Haitian Empowerment, Inc."
+  title: {
+    default: "Pilye — Learning together",
+    template: "%s · Pilye"
+  },
+  description: "A safe, human mentorship classroom where learners and mentors grow together."
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

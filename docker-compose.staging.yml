@@ -145,11 +145,13 @@ services:
       args:
         NEXT_PUBLIC_API_URL: /api
         API_INTERNAL_URL: http://api:4100/api
+        NEXT_PUBLIC_POTAY_URL: ${NEXT_PUBLIC_POTAY_URL:-https://portal.nextgenhaitian.org}
     image: nextgen-mentorship-web:${RELEASE_VERSION:-staging}
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_URL: /api
       API_INTERNAL_URL: http://api:4100/api
+      NEXT_PUBLIC_POTAY_URL: ${NEXT_PUBLIC_POTAY_URL:-https://portal.nextgenhaitian.org}
       HOSTNAME: 0.0.0.0
       PORT: 3100
     ports:

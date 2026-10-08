@@ -15,8 +15,10 @@ RUN pnpm install --frozen-lockfile
 FROM dependencies AS build
 ARG NEXT_PUBLIC_API_URL=/api
 ARG API_INTERNAL_URL=http://api:4100/api
+ARG NEXT_PUBLIC_POTAY_URL=https://portal.nextgenhaitian.org
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV API_INTERNAL_URL=$API_INTERNAL_URL
+ENV NEXT_PUBLIC_POTAY_URL=$NEXT_PUBLIC_POTAY_URL
 COPY apps/web apps/web
 COPY packages packages
 RUN pnpm --filter @nextgen/web build

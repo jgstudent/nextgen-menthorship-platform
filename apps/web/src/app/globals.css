@@ -59,6 +59,30 @@ body {
   transition: background-color 180ms ease, color 180ms ease;
 }
 
+.pilye-product {
+  --background: #fbf8f0;
+  --card: #fffdf8;
+  --sidebar-navy: #173c36;
+  --primary-blue: #2f7464;
+  --hover-blue: #245b4f;
+  --emerald: #2f7464;
+  --gold: #f4c85a;
+  --text-primary: #173c36;
+  --text-secondary: #63746f;
+  --border: #e6e2d8;
+  --ring: #2f7464;
+}
+
+.pilye-product h1,
+.pilye-product h2 {
+  letter-spacing: -0.02em;
+}
+
+.pilye-product main > div > div,
+.pilye-product main > section > div {
+  scroll-margin-top: 100px;
+}
+
 button,
 a,
 input,

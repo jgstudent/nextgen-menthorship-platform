@@ -106,11 +106,5 @@ export function roleLabel(role?: UserRole) {
 }
 
 export function homePathForRole(role?: UserRole) {
-  if (role === "BENEFICIARY") {
-    return "/beneficiary-portal";
-  }
-  if (role === "SPONSOR_VIEWER") {
-    return "/sponsors";
-  }
-  return "/dashboard";
+  return canPreviewMentorship(role) ? "/programs/mentorship" : "/my-mentorship";
 }

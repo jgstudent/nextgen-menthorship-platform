@@ -26,6 +26,7 @@ const values = {
   STAGING_WEB_ORIGIN: "http://localhost:3100",
   STAGING_PUBLIC_HOST: "localhost",
   STAGING_PUBLIC_USE_SSL: "false",
+  NEXT_PUBLIC_POTAY_URL: "https://portal.nextgenhaitian.org",
   DOCUSEAL_BASE_URL: "",
   DOCUSEAL_API_KEY: "",
   DOCUSEAL_WEBHOOK_SECRET: "",
