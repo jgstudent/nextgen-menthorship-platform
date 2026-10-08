@@ -12,6 +12,8 @@ import { UpdatePortalAvailabilityDto } from "./dto/update-portal-availability.dt
 import { MentorshipService } from "./mentorship.service";
 import { UpdatePortalResourceAssignmentDto } from "./dto/update-portal-resource-assignment.dto";
 import { CreatePortalServiceHourDto } from "./dto/create-portal-service-hour.dto";
+import { CreatePortalNoteDto } from "./dto/create-portal-note.dto";
+import { UpdatePortalAssignmentDto } from "./dto/update-portal-assignment.dto";
 
 @Controller("mentorship/portal")
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -52,5 +54,15 @@ export class MentorshipPortalController {
   @Post("service-hours")
   createServiceHour(@Body() dto: CreatePortalServiceHourDto, @CurrentUser() user: AuthenticatedUser) {
     return this.mentorship.createPortalServiceHour(dto, user);
+  }
+
+  @Patch("assignments/:assignmentId")
+  updateAssignment(@Param("assignmentId") assignmentId: string, @Body() dto: UpdatePortalAssignmentDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.mentorship.updatePortalAssignment(assignmentId, dto, user);
+  }
+
+  @Post("relationships/:relationshipId/notes")
+  createNote(@Param("relationshipId") relationshipId: string, @Body() dto: CreatePortalNoteDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.mentorship.createPortalNote(relationshipId, dto, user);
   }
 }

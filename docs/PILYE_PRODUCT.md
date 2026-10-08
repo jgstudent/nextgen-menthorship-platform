@@ -41,7 +41,9 @@ Tokenized `/apply/mentorship/[token]` pages use the Pilye identity and do not re
 ## Ecosystem boundary
 
 - Pilye owns the classroom experience and mentorship records.
+- Pilye owns authentication, invitation tokens, roles, and audit records; only a Super Admin can approve participant access.
 - Potay is the ecosystem entry point and product launcher.
+- Potay/NextGen integration uses OIDC federation or a versioned provisioning API and never a direct database dependency. See `IDENTITY_INTEGRATION.md`.
 - A configurable `NEXT_PUBLIC_POTAY_URL` powers the explicit “Return to Potay” link.
 - Internal package, container, and database identifiers may retain their historical `nextgen-mentorship` names; those identifiers are not customer-facing branding.
 - Other copied portal routes are not exposed in Pilye navigation. They should be removed only after migration and retention review, not as part of a visual rebrand.

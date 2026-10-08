@@ -26,6 +26,9 @@ import { UpdateMentorshipResourceDto } from "./dto/update-mentorship-resource.dt
 import { ReviewMentorshipServiceHourDto } from "./dto/review-mentorship-service-hour.dto";
 import { UpdateMentorshipStipendDecisionDto } from "./dto/update-mentorship-stipend-decision.dto";
 import { DeleteMentorshipProgramDto } from "./dto/delete-mentorship-program.dto";
+import { CreateMentorshipAssignmentDto } from "./dto/create-mentorship-assignment.dto";
+import { UpdateMentorshipAssignmentDto } from "./dto/update-mentorship-assignment.dto";
+import { CreateMentorshipNoteDto } from "./dto/create-mentorship-note.dto";
 
 @Controller("mentorship")
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -115,6 +118,7 @@ export class MentorshipController {
   }
 
   @Post("programs/:programId/applications/:applicationId/review")
+  @Roles(UserRole.SUPER_ADMIN)
   reviewApplication(@Param("programId") programId: string, @Param("applicationId") applicationId: string, @Body() dto: ReviewMentorshipApplicationDto, @CurrentUser() user: AuthenticatedUser) {
     return this.mentorship.reviewApplication(programId, applicationId, dto, user);
   }
@@ -207,6 +211,26 @@ export class MentorshipController {
   @Post("programs/:programId/relationships/:relationshipId/progress")
   createProgressUpdate(@Param("programId") programId: string, @Param("relationshipId") relationshipId: string, @Body() dto: CreateMentorshipProgressUpdateDto, @CurrentUser() user: AuthenticatedUser) {
     return this.mentorship.createProgressUpdate(programId, relationshipId, dto, user);
+  }
+
+  @Post("programs/:programId/relationships/:relationshipId/assignments")
+  createAssignment(@Param("programId") programId: string, @Param("relationshipId") relationshipId: string, @Body() dto: CreateMentorshipAssignmentDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.mentorship.createAssignment(programId, relationshipId, dto, user);
+  }
+
+  @Patch("programs/:programId/relationships/:relationshipId/assignments/:assignmentId")
+  updateAssignment(@Param("programId") programId: string, @Param("relationshipId") relationshipId: string, @Param("assignmentId") assignmentId: string, @Body() dto: UpdateMentorshipAssignmentDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.mentorship.updateAssignment(programId, relationshipId, assignmentId, dto, user);
+  }
+
+  @Post("programs/:programId/relationships/:relationshipId/notes")
+  createNote(@Param("programId") programId: string, @Param("relationshipId") relationshipId: string, @Body() dto: CreateMentorshipNoteDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.mentorship.createNote(programId, relationshipId, dto, user);
+  }
+
+  @Post("programs/:programId/notifications/process")
+  processNotifications(@Param("programId") programId: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.mentorship.processNotifications(programId, user);
   }
 
   @Post("programs/:programId/cohorts/:cohortId/matches/generate")

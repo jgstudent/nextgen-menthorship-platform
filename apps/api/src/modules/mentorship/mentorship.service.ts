@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
-import { MentorshipApplicationSource, MentorshipApplicationStatus, MentorshipAttendanceStatus, MentorshipCohortStatus, MentorshipGoalStatus, MentorshipMatchStatus, MentorshipParticipantRole, MentorshipParticipantStatus, MentorshipProgramStatus, MentorshipResourceAssignmentStatus, MentorshipServiceHourStatus, MentorshipSessionStatus, MentorshipStipendStatus, Prisma, UserRole, UserStatus } from "@prisma/client";
+import { MentorshipApplicationSource, MentorshipApplicationStatus, MentorshipAssignmentStatus, MentorshipAttendanceStatus, MentorshipCohortStatus, MentorshipGoalStatus, MentorshipMatchStatus, MentorshipNoteVisibility, MentorshipNotificationType, MentorshipParticipantRole, MentorshipParticipantStatus, MentorshipProgramStatus, MentorshipResourceAssignmentStatus, MentorshipServiceHourStatus, MentorshipSessionStatus, MentorshipStipendStatus, Prisma, UserRole, UserStatus } from "@prisma/client";
 import * as argon2 from "argon2";
 import { AuthenticatedUser } from "../../common/types/authenticated-user";
 import { PrismaService } from "../prisma/prisma.service";
@@ -31,6 +31,11 @@ import { UpdatePortalResourceAssignmentDto } from "./dto/update-portal-resource-
 import { CreatePortalServiceHourDto } from "./dto/create-portal-service-hour.dto";
 import { ReviewMentorshipServiceHourDto } from "./dto/review-mentorship-service-hour.dto";
 import { UpdateMentorshipStipendDecisionDto } from "./dto/update-mentorship-stipend-decision.dto";
+import { CreateMentorshipAssignmentDto } from "./dto/create-mentorship-assignment.dto";
+import { UpdateMentorshipAssignmentDto } from "./dto/update-mentorship-assignment.dto";
+import { CreateMentorshipNoteDto } from "./dto/create-mentorship-note.dto";
+import { CreatePortalNoteDto } from "./dto/create-portal-note.dto";
+import { UpdatePortalAssignmentDto } from "./dto/update-portal-assignment.dto";
 
 const defaultMatchingWeights = {
   academicAlignment: 25,
@@ -442,7 +447,7 @@ export class MentorshipService {
     await this.findProgram(programId);
     return this.prisma.mentorshipRelationship.findMany({
       where: { programId },
-      include: { cohort: { select: { id: true, name: true, code: true, minimumSessions: true, expectedHours: true } }, mentee: { include: { application: true } }, provider: { include: { application: true } }, match: { select: { id: true, score: true, approvedAt: true } }, goals: { orderBy: { createdAt: "desc" } }, sessions: { orderBy: { scheduledStart: "desc" } }, progressUpdates: { include: { author: { select: { id: true, firstName: true, lastName: true } } }, orderBy: { createdAt: "desc" } } },
+      include: { cohort: { select: { id: true, name: true, code: true, minimumSessions: true, expectedHours: true } }, mentee: { include: { application: true } }, provider: { include: { application: true } }, match: { select: { id: true, score: true, approvedAt: true } }, goals: { orderBy: { createdAt: "desc" } }, sessions: { orderBy: { scheduledStart: "desc" } }, assignments: { include: { assignee: { include: { application: true } }, goal: true, session: true }, orderBy: { createdAt: "desc" } }, notes: { include: { author: { select: { id: true, firstName: true, lastName: true } } }, orderBy: { createdAt: "desc" } }, progressUpdates: { include: { author: { select: { id: true, firstName: true, lastName: true } } }, orderBy: { createdAt: "desc" } } },
       orderBy: [{ status: "asc" }, { createdAt: "desc" }]
     });
   }
@@ -459,6 +464,8 @@ export class MentorshipService {
         provider: { include: { application: { select: { firstName: true, lastName: true, email: true } } } },
         goals: true,
         sessions: true,
+        resourceAssignments: true,
+        assignments: true,
         serviceHours: true,
         progressUpdates: { select: { createdAt: true } }
       },
@@ -474,7 +481,11 @@ export class MentorshipService {
       const activeGoals = relationship.goals.filter((goal) => goal.status !== MentorshipGoalStatus.CANCELLED);
       const completedGoals = activeGoals.filter((goal) => goal.status === MentorshipGoalStatus.COMPLETED).length;
       const goalProgressPercent = activeGoals.length ? Math.round(activeGoals.reduce((sum, goal) => sum + goal.progressPercent, 0) / activeGoals.length) : 0;
-      const activityDates = [relationship.updatedAt, ...relationship.sessions.map((session) => session.updatedAt), ...relationship.goals.map((goal) => goal.updatedAt), ...relationship.progressUpdates.map((update) => update.createdAt)];
+      const completedResources = relationship.resourceAssignments.filter((assignment) => assignment.status === MentorshipResourceAssignmentStatus.COMPLETED).length;
+      const activeAssignments = relationship.assignments.filter((assignment) => assignment.status !== MentorshipAssignmentStatus.CANCELLED);
+      const completedAssignments = activeAssignments.filter((assignment) => assignment.status === MentorshipAssignmentStatus.COMPLETED).length;
+      const overdueActions = activeAssignments.filter((assignment) => assignment.status !== MentorshipAssignmentStatus.COMPLETED && assignment.dueDate && assignment.dueDate < now).length;
+      const activityDates = [relationship.updatedAt, ...relationship.sessions.map((session) => session.updatedAt), ...relationship.goals.map((goal) => goal.updatedAt), ...relationship.resourceAssignments.map((assignment) => assignment.updatedAt), ...relationship.assignments.map((assignment) => assignment.updatedAt), ...relationship.progressUpdates.map((update) => update.createdAt)];
       const lastActivityAt = new Date(Math.max(...activityDates.map((date) => date.getTime())));
       const targetComplete = completedSessions.length >= relationship.cohort.minimumSessions && verifiedMinutes >= relationship.cohort.expectedHours * 60;
       const inactive = ["ACTIVE", "PAUSED"].includes(relationship.status) && lastActivityAt < inactiveBefore;
@@ -496,6 +507,12 @@ export class MentorshipService {
         completedGoals,
         totalGoals: activeGoals.length,
         goalProgressPercent,
+        completedResources,
+        totalResources: relationship.resourceAssignments.length,
+        resourceCompletionRate: relationship.resourceAssignments.length ? percentage(completedResources, relationship.resourceAssignments.length) : 0,
+        completedAssignments,
+        totalAssignments: activeAssignments.length,
+        overdueActions,
         overdueSessions,
         lastActivityAt: lastActivityAt.toISOString(),
         inactive,
@@ -521,6 +538,12 @@ export class MentorshipService {
         goalProgressPercent: goals.length ? Math.round(goals.reduce((sum, goal) => sum + goal.progressPercent, 0) / goals.length) : 0,
         completedGoals: goals.filter((goal) => goal.status === MentorshipGoalStatus.COMPLETED).length,
         totalGoals: goals.length,
+        completedResources: rows.reduce((sum, row) => sum + row.completedResources, 0),
+        totalResources: rows.reduce((sum, row) => sum + row.totalResources, 0),
+        resourceCompletionRate: rows.reduce((sum, row) => sum + row.totalResources, 0) ? percentage(rows.reduce((sum, row) => sum + row.completedResources, 0), rows.reduce((sum, row) => sum + row.totalResources, 0)) : 0,
+        completedAssignments: rows.reduce((sum, row) => sum + row.completedAssignments, 0),
+        totalAssignments: rows.reduce((sum, row) => sum + row.totalAssignments, 0),
+        overdueActions: rows.reduce((sum, row) => sum + row.overdueActions, 0),
         overdueSessions: rows.reduce((sum, row) => sum + row.overdueSessions, 0),
         inactiveRelationships: rows.filter((row) => row.inactive).length,
         noShows: sessions.filter((session) => session.status === MentorshipSessionStatus.NO_SHOW).length
@@ -714,6 +737,19 @@ export class MentorshipService {
         cohort: { select: { id: true, name: true, code: true, minimumSessions: true, expectedHours: true, programStartDate: true, programEndDate: true } },
         goals: { orderBy: { createdAt: "desc" as const } },
         sessions: { orderBy: { scheduledStart: "desc" as const } },
+        resourceAssignments: {
+          where: { resource: { archivedAt: null } },
+          include: {
+            resource: { select: { id: true, title: true, description: true, type: true, url: true, tags: true } },
+            assignee: { include: { application: { select: { firstName: true, lastName: true, email: true } } } },
+            goal: { select: { id: true, title: true } },
+            session: { select: { id: true, title: true, scheduledStart: true } },
+            assignedBy: { select: { id: true, firstName: true, lastName: true } }
+          },
+          orderBy: { createdAt: "desc" as const }
+        },
+        assignments: { include: { assignee: { select: { id: true, role: true } }, goal: { select: { id: true, title: true } }, session: { select: { id: true, title: true, scheduledStart: true } } }, orderBy: { createdAt: "desc" as const } },
+        notes: { where: { visibility: MentorshipNoteVisibility.SHARED }, include: { author: { select: { id: true, firstName: true, lastName: true } } }, orderBy: { createdAt: "desc" as const } },
         progressUpdates: { include: { author: { select: { id: true, firstName: true, lastName: true } } }, orderBy: { createdAt: "desc" as const } },
         mentee: { include: { application: { select: { firstName: true, lastName: true, email: true } } } },
         provider: { include: { application: { select: { firstName: true, lastName: true, email: true } } } }
@@ -746,6 +782,7 @@ export class MentorshipService {
     });
 
     return {
+      notifications: await this.prisma.mentorshipNotification.findMany({ where: { recipientUserId: user.sub }, orderBy: { createdAt: "desc" }, take: 50 }),
       participants: participants.map((participant) => ({
         id: participant.id,
         role: participant.role,
@@ -786,6 +823,7 @@ export class MentorshipService {
     const notes = dto.reason?.trim() ? [session.notes, `Participant reschedule note: ${dto.reason.trim()}`].filter(Boolean).join("\n\n") : session.notes;
     const updated = await this.prisma.mentorshipSession.update({ where: { id: sessionId }, data: { scheduledStart: start, scheduledEnd: end, notes } });
     await this.audit(user, session.relationship.program.organizationId, "mentorship.portal.session_rescheduled", "MentorshipSession", sessionId, { scheduledStart: start.toISOString(), scheduledEnd: end.toISOString() });
+    await this.queueRelationshipNotice(session.relationshipId, MentorshipNotificationType.SESSION_RESCHEDULED, `Session rescheduled — ${session.title}`, `Your classroom session was rescheduled to ${start.toLocaleString("en-US")}.`, `session-rescheduled:${session.id}:${start.toISOString()}`);
     return updated;
   }
 
@@ -795,6 +833,7 @@ export class MentorshipService {
     const notes = dto.reason?.trim() ? [session.notes, `Participant cancellation note: ${dto.reason.trim()}`].filter(Boolean).join("\n\n") : session.notes;
     const updated = await this.prisma.mentorshipSession.update({ where: { id: sessionId }, data: { status: MentorshipSessionStatus.CANCELLED, notes } });
     await this.audit(user, session.relationship.program.organizationId, "mentorship.portal.session_cancelled", "MentorshipSession", sessionId, { reasonProvided: Boolean(dto.reason?.trim()) });
+    await this.queueRelationshipNotice(session.relationshipId, MentorshipNotificationType.SESSION_CANCELLED, `Session cancelled — ${session.title}`, `The classroom session scheduled for ${session.scheduledStart.toLocaleString("en-US")} was cancelled.${dto.reason?.trim() ? ` Reason: ${dto.reason.trim()}` : ""}`, `session-cancelled:${session.id}`);
     return updated;
   }
 
@@ -804,6 +843,27 @@ export class MentorshipService {
     const update = await this.prisma.mentorshipProgressUpdate.create({ data: { relationshipId: session.relationshipId, authorId: user.sub, summary: `Session feedback — ${session.title}`, challenges: dto.comments?.trim(), nextSteps: dto.nextSteps?.trim(), progressRating: dto.rating }, include: { author: { select: { id: true, firstName: true, lastName: true } } } });
     await this.audit(user, session.relationship.program.organizationId, "mentorship.portal.feedback_created", "MentorshipSession", sessionId, { progressUpdateId: update.id, rating: dto.rating });
     return update;
+  }
+
+  async updatePortalAssignment(assignmentId: string, dto: UpdatePortalAssignmentDto, user: AuthenticatedUser) {
+    const assignment = await this.prisma.mentorshipAssignment.findFirst({
+      where: { id: assignmentId, assignee: this.portalParticipantWhere(user), relationship: { program: { organization: { enabledAddOns: { has: "MENTORSHIP" } } } } },
+      include: { relationship: { include: { program: { select: { organizationId: true } } } } }
+    });
+    if (!assignment) throw new NotFoundException("Classroom assignment not found.");
+    if (assignment.status === MentorshipAssignmentStatus.CANCELLED) throw new BadRequestException("A cancelled assignment cannot be changed.");
+    const updated = await this.prisma.mentorshipAssignment.update({ where: { id: assignmentId }, data: { status: dto.status, completedAt: dto.status === MentorshipAssignmentStatus.COMPLETED ? new Date() : null } });
+    await this.audit(user, assignment.relationship.program.organizationId, "mentorship.portal.assignment_updated", "MentorshipAssignment", assignment.id, { status: dto.status });
+    return updated;
+  }
+
+  async createPortalNote(relationshipId: string, dto: CreatePortalNoteDto, user: AuthenticatedUser) {
+    const participantIds = (await this.prisma.mentorshipParticipant.findMany({ where: this.portalParticipantWhere(user), select: { id: true } })).map((participant) => participant.id);
+    const relationship = participantIds.length ? await this.prisma.mentorshipRelationship.findFirst({ where: { id: relationshipId, OR: [{ menteeParticipantId: { in: participantIds } }, { providerParticipantId: { in: participantIds } }], program: { organization: { enabledAddOns: { has: "MENTORSHIP" } } } }, include: { program: { select: { organizationId: true } } } }) : null;
+    if (!relationship) throw new NotFoundException("Classroom not found.");
+    const note = await this.prisma.mentorshipNote.create({ data: { relationshipId, authorId: user.sub, body: dto.body.trim(), visibility: MentorshipNoteVisibility.SHARED }, include: { author: { select: { id: true, firstName: true, lastName: true } } } });
+    await this.audit(user, relationship.program.organizationId, "mentorship.portal.note_created", "MentorshipNote", note.id, { relationshipId, visibility: MentorshipNoteVisibility.SHARED });
+    return note;
   }
 
   async createGoal(programId: string, relationshipId: string, dto: CreateMentorshipGoalDto, user: AuthenticatedUser) {
@@ -838,10 +898,11 @@ export class MentorshipService {
       const details = `${start.toLocaleString("en-US", { timeZone: program.timeZone })} (${program.timeZone})${dto.videoUrl ? `\n${dto.videoUrl}` : dto.location ? `\n${dto.location}` : ""}`;
       const menteeEmail = await transaction.mentorshipEmailOutbox.create({ data: { organizationId: program.organizationId, programId, applicationId: relationship.mentee.applicationId, recipient: relationship.mentee.application.email, subject, body: `A mentorship session has been scheduled for ${relationship.cohort.name}.\n\n${details}\n\n${dto.agenda ?? ""}`.trim() } });
       const providerEmail = await transaction.mentorshipEmailOutbox.create({ data: { organizationId: program.organizationId, programId, applicationId: relationship.provider.applicationId, recipient: relationship.provider.application.email, subject, body: `A mentorship session has been scheduled for ${relationship.cohort.name}.\n\n${details}\n\n${dto.agenda ?? ""}`.trim() } });
-      return { session, emailOutboxIds: [menteeEmail.id, providerEmail.id] };
+      return { session, emailOutboxIds: [menteeEmail.id, providerEmail.id], subject, details };
     });
     await this.audit(user, program.organizationId, "mentorship.session.created", "MentorshipSession", result.session.id, { relationshipId, scheduledStart: start.toISOString() });
     await Promise.all(result.emailOutboxIds.map((id) => this.dispatchEmailOutbox(id)));
+    await this.queueRelationshipNotice(relationshipId, MentorshipNotificationType.SESSION_SCHEDULED, result.subject, result.details, `session-scheduled:${result.session.id}`, undefined, false);
     return result.session;
   }
 
@@ -858,6 +919,7 @@ export class MentorshipService {
     if (dto.status === MentorshipSessionStatus.COMPLETED && (!completedMinutes || completedMinutes < 1)) throw new BadRequestException("Completed sessions must record at least one minute.");
     const session = await this.prisma.mentorshipSession.update({ where: { id: sessionId }, data: { status: dto.status, providerAttendance: dto.providerAttendance, menteeAttendance: dto.menteeAttendance, completedMinutes, notes: dto.notes?.trim() } });
     await this.audit(user, program.organizationId, "mentorship.session.updated", "MentorshipSession", session.id, { relationshipId, status: session.status, completedMinutes: session.completedMinutes });
+    if (dto.status === MentorshipSessionStatus.CANCELLED) await this.queueRelationshipNotice(relationshipId, MentorshipNotificationType.SESSION_CANCELLED, `Session cancelled — ${existing.title}`, `The classroom session scheduled for ${existing.scheduledStart.toLocaleString("en-US", { timeZone: program.timeZone })} (${program.timeZone}) was cancelled.`, `session-cancelled:${session.id}`);
     return session;
   }
 
@@ -867,6 +929,48 @@ export class MentorshipService {
     const update = await this.prisma.mentorshipProgressUpdate.create({ data: { relationshipId, authorId: user.sub, summary: dto.summary.trim(), challenges: dto.challenges?.trim(), nextSteps: dto.nextSteps?.trim(), progressRating: dto.progressRating }, include: { author: { select: { id: true, firstName: true, lastName: true } } } });
     await this.audit(user, program.organizationId, "mentorship.progress.created", "MentorshipProgressUpdate", update.id, { relationshipId, progressRating: update.progressRating });
     return update;
+  }
+
+  async createAssignment(programId: string, relationshipId: string, dto: CreateMentorshipAssignmentDto, user: AuthenticatedUser) {
+    const program = await this.findProgram(programId);
+    const relationship = await this.findRelationship(programId, relationshipId);
+    if (![relationship.menteeParticipantId, relationship.providerParticipantId].includes(dto.assigneeParticipantId)) throw new BadRequestException("The assignee must belong to this classroom.");
+    if (dto.goalId && !(await this.prisma.mentorshipGoal.findFirst({ where: { id: dto.goalId, relationshipId } }))) throw new BadRequestException("The selected goal does not belong to this classroom.");
+    if (dto.sessionId && !(await this.prisma.mentorshipSession.findFirst({ where: { id: dto.sessionId, relationshipId } }))) throw new BadRequestException("The selected session does not belong to this classroom.");
+    const assignment = await this.prisma.mentorshipAssignment.create({ data: { relationshipId, assigneeParticipantId: dto.assigneeParticipantId, goalId: dto.goalId, sessionId: dto.sessionId, title: dto.title.trim(), description: dto.description?.trim(), dueDate: this.toDate(dto.dueDate), createdById: user.sub }, include: { assignee: { include: { application: true } }, goal: true, session: true } });
+    await this.audit(user, program.organizationId, "mentorship.assignment.created", "MentorshipAssignment", assignment.id, { relationshipId, assigneeParticipantId: dto.assigneeParticipantId, dueDate: assignment.dueDate?.toISOString() });
+    return assignment;
+  }
+
+  async updateAssignment(programId: string, relationshipId: string, assignmentId: string, dto: UpdateMentorshipAssignmentDto, user: AuthenticatedUser) {
+    const program = await this.findProgram(programId);
+    await this.findRelationship(programId, relationshipId);
+    const existing = await this.prisma.mentorshipAssignment.findFirst({ where: { id: assignmentId, relationshipId } });
+    if (!existing) throw new NotFoundException("Classroom assignment not found.");
+    const assignment = await this.prisma.mentorshipAssignment.update({ where: { id: assignmentId }, data: { title: dto.title?.trim(), description: dto.description?.trim(), dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined, status: dto.status, completedAt: dto.status === MentorshipAssignmentStatus.COMPLETED ? new Date() : dto.status ? null : undefined } });
+    await this.audit(user, program.organizationId, "mentorship.assignment.updated", "MentorshipAssignment", assignment.id, { relationshipId, status: assignment.status });
+    return assignment;
+  }
+
+  async createNote(programId: string, relationshipId: string, dto: CreateMentorshipNoteDto, user: AuthenticatedUser) {
+    const program = await this.findProgram(programId);
+    await this.findRelationship(programId, relationshipId);
+    const note = await this.prisma.mentorshipNote.create({ data: { relationshipId, authorId: user.sub, body: dto.body.trim(), visibility: dto.visibility ?? MentorshipNoteVisibility.SHARED }, include: { author: { select: { id: true, firstName: true, lastName: true } } } });
+    await this.audit(user, program.organizationId, "mentorship.note.created", "MentorshipNote", note.id, { relationshipId, visibility: note.visibility });
+    return note;
+  }
+
+  async processNotifications(programId: string, user: AuthenticatedUser) {
+    const program = await this.findProgram(programId);
+    const now = new Date();
+    const reminderCutoff = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const sessions = await this.prisma.mentorshipSession.findMany({ where: { relationship: { programId }, status: MentorshipSessionStatus.SCHEDULED, scheduledStart: { gt: now, lte: reminderCutoff } }, select: { id: true, relationshipId: true, title: true, scheduledStart: true } });
+    const overdue = await this.prisma.mentorshipAssignment.findMany({ where: { relationship: { programId }, status: { in: [MentorshipAssignmentStatus.TODO, MentorshipAssignmentStatus.IN_PROGRESS] }, dueDate: { lt: now } }, select: { id: true, relationshipId: true, assigneeParticipantId: true, title: true, dueDate: true } });
+    let delivered = 0;
+    for (const session of sessions) delivered += await this.queueRelationshipNotice(session.relationshipId, MentorshipNotificationType.SESSION_REMINDER, `Session reminder — ${session.title}`, `Your classroom session starts ${session.scheduledStart.toLocaleString("en-US", { timeZone: program.timeZone })} (${program.timeZone}).`, `session-reminder:${session.id}:${session.scheduledStart.toISOString()}`);
+    for (const assignment of overdue) delivered += await this.queueRelationshipNotice(assignment.relationshipId, MentorshipNotificationType.ACTION_OVERDUE, `Overdue classroom action — ${assignment.title}`, `This classroom action was due ${assignment.dueDate?.toLocaleDateString("en-US", { timeZone: program.timeZone })}.`, `assignment-overdue:${assignment.id}`, assignment.assigneeParticipantId);
+    await this.audit(user, program.organizationId, "mentorship.notifications.processed", "MentorshipProgram", programId, { sessions: sessions.length, overdueActions: overdue.length, delivered });
+    return { sessions: sessions.length, overdueActions: overdue.length, delivered };
   }
 
   async generateMatches(programId: string, cohortId: string, user: AuthenticatedUser) {
@@ -937,6 +1041,10 @@ export class MentorshipService {
     });
     await this.audit(user, program.organizationId, "mentorship.match.decided", "MentorshipMatch", matchId, { previousDecision: existing.status, decision: dto.decision, notesUpdated: dto.notes !== undefined });
     await Promise.all(result.emailOutboxIds.map((id) => this.dispatchEmailOutbox(id)));
+    if (dto.decision === MentorshipMatchStatus.APPROVED && result.emailOutboxIds.length) {
+      const relationship = await this.prisma.mentorshipRelationship.findFirst({ where: { matchId }, select: { id: true } });
+      if (relationship) await this.queueRelationshipNotice(relationship.id, MentorshipNotificationType.MATCH_CONFIRMED, `Mentorship match confirmed — ${cohort.name}`, `Your ${this.roleLabel(existing.provider.role)} classroom is now active.`, `match-confirmed:${matchId}`, undefined, false);
+    }
     return result.decided;
   }
 
@@ -1187,6 +1295,44 @@ export class MentorshipService {
     const session = participantIds.length ? await this.prisma.mentorshipSession.findFirst({ where: { id, relationship: { OR: [{ menteeParticipantId: { in: participantIds } }, { providerParticipantId: { in: participantIds } }] } }, include: { relationship: { include: { program: { select: { organizationId: true, organization: { select: { id: true, enabledAddOns: true } } } } } } } }) : null;
     if (!session || !session.relationship.program.organization.enabledAddOns.includes("MENTORSHIP")) throw new NotFoundException("Mentorship session not found.");
     return session;
+  }
+
+  private async queueRelationshipNotice(relationshipId: string, type: MentorshipNotificationType, title: string, message: string, dedupePrefix: string, onlyParticipantId?: string, sendEmail = true) {
+    const relationship = await this.prisma.mentorshipRelationship.findFirst({
+      where: { id: relationshipId },
+      include: {
+        program: { select: { id: true, organizationId: true } },
+        mentee: { select: { id: true, userId: true, applicationId: true, application: { select: { email: true } } } },
+        provider: { select: { id: true, userId: true, applicationId: true, application: { select: { email: true } } } }
+      }
+    });
+    if (!relationship) return 0;
+    const recipients = [relationship.mentee, relationship.provider].filter((participant) => !onlyParticipantId || participant.id === onlyParticipantId);
+    let delivered = 0;
+    for (const recipient of recipients) {
+      const dedupeKey = `${dedupePrefix}:${recipient.id}`;
+      if (await this.prisma.mentorshipNotification.findUnique({ where: { dedupeKey }, select: { id: true } })) continue;
+      await this.prisma.mentorshipNotification.create({
+        data: {
+          organizationId: relationship.program.organizationId,
+          programId: relationship.program.id,
+          applicationId: recipient.applicationId,
+          relationshipId,
+          recipientUserId: recipient.userId,
+          type,
+          title,
+          message,
+          actionUrl: `/my-mentorship?classroom=${relationshipId}`,
+          dedupeKey
+        }
+      });
+      delivered += 1;
+      if (sendEmail) {
+        const queued = await this.prisma.mentorshipEmailOutbox.create({ data: { organizationId: relationship.program.organizationId, programId: relationship.program.id, applicationId: recipient.applicationId, recipient: recipient.application.email, subject: title, body: `${message}\n\nOpen your Pilye classroom for details.` } });
+        await this.dispatchEmailOutbox(queued.id);
+      }
+    }
+    return delivered;
   }
 
   private async dispatchEmailOutbox(id: string) {

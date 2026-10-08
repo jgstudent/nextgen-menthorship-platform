@@ -113,6 +113,23 @@ services:
     networks:
       - backend
 
+  qa-seed:
+    profiles: ["qa"]
+    image: nextgen-mentorship-api:${RELEASE_VERSION:-staging}
+    restart: "no"
+    command:
+      - node
+      - apps/api/node_modules/tsx/dist/cli.mjs
+      - apps/api/prisma/seed-mentorship-qa.ts
+    environment: *api-environment
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      bootstrap:
+        condition: service_completed_successfully
+    networks:
+      - backend
+
   api:
     build:
       context: .

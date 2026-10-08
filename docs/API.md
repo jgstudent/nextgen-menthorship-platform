@@ -259,3 +259,18 @@ Document signing records are scoped through the same workspace, program, project
 `POST /webhooks/docuseal`
 
 Set `DOCUSEAL_WEBHOOK_SECRET` and send it as `x-docuseal-secret` or `x-webhook-secret` when enabling webhook verification.
+
+## Pilye mentorship classrooms
+
+Administrative endpoints require a Pilye `SUPER_ADMIN` or `EXECUTIVE` token unless noted. Participant approval and the resulting account invitation require `SUPER_ADMIN`.
+
+- `GET /mentorship/programs/:programId/relationships` returns separate mentor and tutor classrooms, including goals, sessions, assignments, notes, and progress.
+- `POST /mentorship/programs/:programId/relationships/:relationshipId/assignments`
+- `PATCH /mentorship/programs/:programId/relationships/:relationshipId/assignments/:assignmentId`
+- `POST /mentorship/programs/:programId/relationships/:relationshipId/notes` supports `SHARED` and `STAFF_ONLY` visibility.
+- `POST /mentorship/programs/:programId/notifications/process` idempotently queues reminders for sessions in the next 24 hours and overdue assignments. A trusted scheduler may call this endpoint periodically.
+- `GET /mentorship/portal` returns only classrooms linked to the signed-in participant. Staff-only notes are excluded.
+- `PATCH /mentorship/portal/assignments/:assignmentId` permits only the assigned participant to update status.
+- `POST /mentorship/portal/relationships/:relationshipId/notes` always creates a shared note and requires classroom membership.
+
+Session creation sends schedule notices. Participant rescheduling and cancellation send relationship-scoped email and in-app notices. Notification records use deduplication keys so reminder processing is safe to retry.

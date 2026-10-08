@@ -27,6 +27,15 @@ docker compose --env-file .env.staging -f docker-compose.staging.yml ps
 
 Open `http://localhost:3100`. The generated administrator password is stored only in `.env.staging`.
 
+For an isolated acceptance-test dataset after the stack is healthy:
+
+```powershell
+npm run staging:seed-qa
+npm run staging:verify
+```
+
+The QA seed is idempotent and creates one mentee with separate mentor and tutor classrooms. It uses three `*.qa@pilye.local` staging-only accounts and the staging `ADMIN_PASSWORD`; it must never be run against production. Verification checks classroom isolation, participant-note privacy, goals, sessions, assignments, resources, verified hours, and monitoring totals without printing credentials.
+
 To watch startup logs:
 
 ```powershell

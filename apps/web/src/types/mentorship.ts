@@ -15,6 +15,9 @@ export type MentorshipSessionStatus = "SCHEDULED" | "COMPLETED" | "CANCELLED" | 
 export type MentorshipAttendanceStatus = "PENDING" | "ATTENDED" | "ABSENT" | "EXCUSED";
 export type MentorshipResourceType = "LINK" | "DOCUMENT" | "VIDEO" | "ARTICLE" | "TEMPLATE" | "OTHER";
 export type MentorshipResourceAssignmentStatus = "ASSIGNED" | "IN_PROGRESS" | "COMPLETED";
+export type MentorshipAssignmentStatus = "TODO" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+export type MentorshipNoteVisibility = "SHARED" | "STAFF_ONLY";
+export type MentorshipNotificationType = "APPLICATION" | "INVITATION" | "MATCH_CONFIRMED" | "SESSION_SCHEDULED" | "SESSION_REMINDER" | "SESSION_RESCHEDULED" | "SESSION_CANCELLED" | "ACTION_OVERDUE" | "SYSTEM";
 export type MentorshipServiceHourStatus = "SUBMITTED" | "UNDER_REVIEW" | "APPROVED" | "REJECTED";
 export type MentorshipStipendStatus = "PENDING_REVIEW" | "ELIGIBLE" | "INELIGIBLE" | "APPROVED" | "PAID";
 
@@ -59,12 +62,17 @@ export type MentorshipRelationship = {
   match: { id: string; score: number; approvedAt?: string };
   goals: MentorshipGoal[];
   sessions: MentorshipSession[];
+  assignments: MentorshipAssignment[];
+  notes: MentorshipNote[];
   progressUpdates: MentorshipProgressUpdate[];
 };
 
 export type MentorshipGoal = { id: string; relationshipId: string; title: string; description?: string; status: MentorshipGoalStatus; progressPercent: number; targetDate?: string; completedAt?: string; createdAt: string; updatedAt: string };
 export type MentorshipSession = { id: string; relationshipId: string; title: string; scheduledStart: string; scheduledEnd: string; meetingMode: MentorshipMeetingMode; location?: string; videoUrl?: string; agenda?: string; notes?: string; status: MentorshipSessionStatus; providerAttendance: MentorshipAttendanceStatus; menteeAttendance: MentorshipAttendanceStatus; completedMinutes: number; createdAt: string; updatedAt: string };
 export type MentorshipProgressUpdate = { id: string; relationshipId: string; summary: string; challenges?: string; nextSteps?: string; progressRating?: number; createdAt: string; author: { id: string; firstName: string; lastName: string } };
+export type MentorshipAssignment = { id: string; relationshipId: string; sessionId?: string; goalId?: string; assigneeParticipantId: string; title: string; description?: string; status: MentorshipAssignmentStatus; dueDate?: string; completedAt?: string; createdAt: string; updatedAt: string; assignee?: { id: string; role: MentorshipParticipantRole }; goal?: Pick<MentorshipGoal, "id" | "title">; session?: Pick<MentorshipSession, "id" | "title" | "scheduledStart"> };
+export type MentorshipNote = { id: string; relationshipId: string; body: string; visibility: MentorshipNoteVisibility; createdAt: string; updatedAt: string; author: { id: string; firstName: string; lastName: string } };
+export type MentorshipNotification = { id: string; type: MentorshipNotificationType; title: string; message: string; actionUrl?: string; readAt?: string; createdAt: string };
 
 export type MentorshipResourceAssignment = {
   id: string; resourceId: string; relationshipId: string; goalId?: string; sessionId?: string; assigneeParticipantId: string;
@@ -111,6 +119,7 @@ export type MentorshipServiceHourReport = {
 };
 
 export type MentorshipPortal = {
+  notifications: MentorshipNotification[];
   participants: Array<{
     id: string; role: MentorshipParticipantRole; status: MentorshipParticipantStatus; availableForMatch: boolean;
     application: { firstName: string; lastName: string; email: string; timeZone: string; availability: Record<string, unknown>; meetingMode?: MentorshipMeetingMode; hoursPerWeek?: number };
@@ -123,7 +132,7 @@ export type MentorshipPortal = {
       id: string; status: MentorshipRelationship["status"]; startDate: string; endDate?: string;
       cohort: Pick<MentorshipCohort, "id" | "name" | "code" | "minimumSessions" | "expectedHours" | "programStartDate" | "programEndDate">;
       counterpart: { role: MentorshipParticipantRole; name: string; email: string };
-      goals: MentorshipGoal[]; sessions: MentorshipSession[]; progressUpdates: MentorshipProgressUpdate[];
+      goals: MentorshipGoal[]; sessions: MentorshipSession[]; resourceAssignments: MentorshipResourceAssignment[]; assignments: MentorshipAssignment[]; notes: MentorshipNote[]; progressUpdates: MentorshipProgressUpdate[];
     }>;
   }>;
 };
@@ -131,7 +140,8 @@ export type MentorshipPortal = {
 export type MentorshipMonitoringMetrics = {
   relationships: number; activeRelationships: number; administrativelyCompleted: number; targetComplete: number; completionRate: number;
   completedSessions: number; completedHours: number; attendanceRate: number; goalProgressPercent: number; completedGoals: number; totalGoals: number;
-  overdueSessions: number; inactiveRelationships: number; noShows: number;
+  completedResources: number; totalResources: number; resourceCompletionRate: number; completedAssignments: number; totalAssignments: number;
+  overdueActions: number; overdueSessions: number; inactiveRelationships: number; noShows: number;
 };
 
 export type MentorshipMonitoringReport = {
@@ -142,7 +152,8 @@ export type MentorshipMonitoringReport = {
     id: string; cohortId: string; cohortName: string; status: MentorshipRelationship["status"]; providerRole: MentorshipParticipantRole;
     providerName: string; providerEmail: string; menteeName: string; menteeEmail: string; completedSessions: number; requiredSessions: number;
     completedHours: number; expectedHours: number; attendanceRate: number; completedGoals: number; totalGoals: number; goalProgressPercent: number;
-    overdueSessions: number; lastActivityAt: string; inactive: boolean; targetComplete: boolean;
+    completedResources: number; totalResources: number; resourceCompletionRate: number; completedAssignments: number; totalAssignments: number;
+    overdueActions: number; overdueSessions: number; lastActivityAt: string; inactive: boolean; targetComplete: boolean;
   }>;
 };
 

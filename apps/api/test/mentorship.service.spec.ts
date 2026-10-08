@@ -1,6 +1,6 @@
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { MentorshipApplicationStatus, MentorshipAttendanceStatus, MentorshipMatchStatus, MentorshipMeetingMode, MentorshipParticipantRole, MentorshipParticipantStatus, MentorshipResourceAssignmentStatus, MentorshipResourceType, MentorshipServiceHourStatus, MentorshipSessionStatus, MentorshipStipendStatus, UserRole, UserStatus } from "@prisma/client";
+import { MentorshipApplicationStatus, MentorshipAssignmentStatus, MentorshipAttendanceStatus, MentorshipMatchStatus, MentorshipMeetingMode, MentorshipNoteVisibility, MentorshipParticipantRole, MentorshipParticipantStatus, MentorshipResourceAssignmentStatus, MentorshipResourceType, MentorshipServiceHourStatus, MentorshipSessionStatus, MentorshipStipendStatus, UserRole, UserStatus } from "@prisma/client";
 import { MentorshipService } from "../src/modules/mentorship/mentorship.service";
 import { PrismaService } from "../src/modules/prisma/prisma.service";
 
@@ -14,7 +14,7 @@ describe("MentorshipService program and cohort configuration", () => {
   };
   const application = { id: "application-1", programId: program.id, cohortId: cohort.id, applicantUserId: null, role: MentorshipParticipantRole.MENTOR, status: MentorshipApplicationStatus.SUBMITTED, firstName: "Jean", lastName: "Pierre", email: "jean@example.test", timeZone: "America/New_York", languages: ["English"], expertise: { Cybersecurity: "Advanced" }, mentoringCapabilities: ["Career exploration"], supportNeeds: [], goals: null };
   const invitedUser = { id: "user-1", email: application.email, status: UserStatus.INVITED, role: UserRole.VOLUNTEER, isActive: false };
-  const relationship = { id: "relationship-1", programId: program.id, cohortId: cohort.id, status: "ACTIVE", cohort, mentee: match.mentee, provider: match.provider };
+  const relationship = { id: "relationship-1", programId: program.id, cohortId: cohort.id, menteeParticipantId: match.mentee.id, providerParticipantId: match.provider.id, status: "ACTIVE", cohort, mentee: match.mentee, provider: match.provider };
   const scheduledSession = { id: "session-1", relationshipId: relationship.id, status: MentorshipSessionStatus.SCHEDULED, providerAttendance: MentorshipAttendanceStatus.PENDING, menteeAttendance: MentorshipAttendanceStatus.PENDING, scheduledStart: new Date("2027-10-01T14:00:00.000Z"), scheduledEnd: new Date("2027-10-01T15:00:00.000Z"), completedMinutes: 0, notes: null };
   const prisma = {
     organization: { findUnique: jest.fn().mockResolvedValue({ id: "org-1", enabledAddOns: ["MENTORSHIP"] }) },
@@ -51,12 +51,15 @@ describe("MentorshipService program and cohort configuration", () => {
     mentorshipMatch: { findFirst: jest.fn().mockResolvedValue(match), findMany: jest.fn().mockResolvedValue([]), update: jest.fn().mockResolvedValue({ ...match, status: MentorshipMatchStatus.APPROVED }), upsert: jest.fn().mockResolvedValue(match) },
     mentorshipRelationship: { count: jest.fn().mockResolvedValue(0), findFirst: jest.fn().mockResolvedValue(null), findMany: jest.fn().mockResolvedValue([]), upsert: jest.fn().mockResolvedValue({ id: "relationship-1" }), update: jest.fn().mockResolvedValue({ ...relationship, status: "ENDED" }) },
     mentorshipGoal: { findFirst: jest.fn() },
-    mentorshipSession: { findFirst: jest.fn().mockResolvedValue(scheduledSession), update: jest.fn().mockResolvedValue({ ...scheduledSession, status: MentorshipSessionStatus.COMPLETED, providerAttendance: MentorshipAttendanceStatus.ATTENDED, menteeAttendance: MentorshipAttendanceStatus.ATTENDED, completedMinutes: 60, notes: "Reviewed goals" }) },
+    mentorshipSession: { findFirst: jest.fn().mockResolvedValue(scheduledSession), findMany: jest.fn().mockResolvedValue([]), update: jest.fn().mockResolvedValue({ ...scheduledSession, status: MentorshipSessionStatus.COMPLETED, providerAttendance: MentorshipAttendanceStatus.ATTENDED, menteeAttendance: MentorshipAttendanceStatus.ATTENDED, completedMinutes: 60, notes: "Reviewed goals" }) },
     mentorshipProgressUpdate: { create: jest.fn() },
     mentorshipServiceHour: { create: jest.fn(), findFirst: jest.fn(), findMany: jest.fn(), update: jest.fn() },
     mentorshipStipendDecision: { upsert: jest.fn() },
     mentorshipResource: { create: jest.fn(), findFirst: jest.fn(), update: jest.fn() },
     mentorshipResourceAssignment: { create: jest.fn(), findFirst: jest.fn(), findMany: jest.fn(), update: jest.fn() },
+    mentorshipAssignment: { create: jest.fn(), findFirst: jest.fn(), findMany: jest.fn(), update: jest.fn() },
+    mentorshipNote: { create: jest.fn() },
+    mentorshipNotification: { findUnique: jest.fn(), create: jest.fn(), findMany: jest.fn() },
     $transaction: jest.fn(),
     organizationAuditLog: { create: jest.fn().mockResolvedValue({}) }
   };
@@ -193,12 +196,14 @@ describe("MentorshipService program and cohort configuration", () => {
         { status: MentorshipSessionStatus.SCHEDULED, scheduledEnd: oldDate, completedMinutes: 0, providerAttendance: MentorshipAttendanceStatus.PENDING, menteeAttendance: MentorshipAttendanceStatus.PENDING, updatedAt: oldDate }
       ],
       progressUpdates: [],
+      resourceAssignments: [{ status: MentorshipResourceAssignmentStatus.COMPLETED, updatedAt: oldDate }],
+      assignments: [{ status: MentorshipAssignmentStatus.IN_PROGRESS, dueDate: oldDate, updatedAt: oldDate }],
       serviceHours: [{ status: MentorshipServiceHourStatus.APPROVED, minutes: 60 }]
     }]);
 
     const report = await service.getMonitoringReport(program.id);
-    expect(report.summary).toEqual(expect.objectContaining({ relationships: 1, completionRate: 100, completedHours: 1, attendanceRate: 100, goalProgressPercent: 75, overdueSessions: 1, inactiveRelationships: 1 }));
-    expect(report.relationships[0]).toEqual(expect.objectContaining({ targetComplete: true, inactive: true, overdueSessions: 1 }));
+    expect(report.summary).toEqual(expect.objectContaining({ relationships: 1, completionRate: 100, completedHours: 1, attendanceRate: 100, goalProgressPercent: 75, resourceCompletionRate: 100, overdueActions: 1, overdueSessions: 1, inactiveRelationships: 1 }));
+    expect(report.relationships[0]).toEqual(expect.objectContaining({ targetComplete: true, inactive: true, resourceCompletionRate: 100, overdueActions: 1, overdueSessions: 1 }));
   });
 
   it("updates only the signed-in participant's availability", async () => {
@@ -218,6 +223,42 @@ describe("MentorshipService program and cohort configuration", () => {
     prisma.mentorshipParticipant.findFirst.mockResolvedValueOnce(null);
     await expect(service.updatePortalAvailability({ participantId: "someone-else", availability: {} }, user)).rejects.toBeInstanceOf(NotFoundException);
     expect(prisma.mentorshipApplication.update).not.toHaveBeenCalled();
+  });
+
+  it("shows relationship resources to both people in the classroom", async () => {
+    const resourceAssignment = {
+      id: "resource-assignment-1",
+      relationshipId: relationship.id,
+      assigneeParticipantId: match.mentee.id,
+      status: MentorshipResourceAssignmentStatus.IN_PROGRESS,
+      resource: { id: "resource-1", title: "Career guide", description: "Shared classroom material", type: MentorshipResourceType.LINK, url: "https://example.test/guide", tags: [] },
+      assignee: match.mentee,
+      goal: null,
+      session: null,
+      assignedBy: { id: "admin-1", firstName: "NextGen", lastName: "Admin" }
+    };
+    prisma.mentorshipParticipant.findMany.mockResolvedValueOnce([{
+      ...match.provider,
+      status: MentorshipParticipantStatus.ACTIVE,
+      availableForMatch: true,
+      program,
+      cohort,
+      resourceAssignments: [],
+      serviceHours: [],
+      stipendDecision: null,
+      relationshipsAsMentee: [],
+      relationshipsAsProvider: [{ ...relationship, goals: [], sessions: [], resourceAssignments: [resourceAssignment], assignments: [], notes: [], progressUpdates: [] }]
+    }]);
+    prisma.mentorshipNotification.findMany.mockResolvedValueOnce([]);
+
+    const portal = await service.findParticipantPortal({ ...user, sub: "provider-user" });
+
+    expect(portal.participants[0].relationships[0].resourceAssignments).toEqual([resourceAssignment]);
+    expect(prisma.mentorshipParticipant.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      include: expect.objectContaining({
+        relationshipsAsProvider: expect.objectContaining({ include: expect.objectContaining({ resourceAssignments: expect.any(Object) }) })
+      })
+    }));
   });
 
   it("allows a linked participant to reschedule their own future session", async () => {
@@ -276,5 +317,54 @@ describe("MentorshipService program and cohort configuration", () => {
 
     await expect(service.updateStipendDecision(program.id, "provider-1", { status: MentorshipStipendStatus.ELIGIBLE }, user)).rejects.toBeInstanceOf(BadRequestException);
     expect(prisma.mentorshipStipendDecision.upsert).not.toHaveBeenCalled();
+  });
+
+  it("creates an assignment only for a participant in the selected classroom", async () => {
+    prisma.mentorshipRelationship.findFirst.mockResolvedValueOnce(relationship);
+    const created = { id: "assignment-1", relationshipId: relationship.id, assigneeParticipantId: match.mentee.id, title: "Prepare questions", status: MentorshipAssignmentStatus.TODO };
+    prisma.mentorshipAssignment.create.mockResolvedValueOnce(created);
+
+    await expect(service.createAssignment(program.id, relationship.id, { title: created.title, assigneeParticipantId: match.mentee.id }, user)).resolves.toBe(created);
+    expect(prisma.mentorshipAssignment.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ relationshipId: relationship.id, assigneeParticipantId: match.mentee.id, createdById: user.sub }) }));
+
+    prisma.mentorshipRelationship.findFirst.mockResolvedValueOnce(relationship);
+    await expect(service.createAssignment(program.id, relationship.id, { title: "Private task", assigneeParticipantId: "outsider" }, user)).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("lets a participant update only their own classroom assignment", async () => {
+    const assignment = { id: "assignment-1", status: MentorshipAssignmentStatus.TODO, relationship: { program: { organizationId: program.organizationId } } };
+    prisma.mentorshipAssignment.findFirst.mockResolvedValueOnce(assignment);
+    prisma.mentorshipAssignment.update.mockResolvedValueOnce({ ...assignment, status: MentorshipAssignmentStatus.COMPLETED });
+
+    await service.updatePortalAssignment(assignment.id, { status: MentorshipAssignmentStatus.COMPLETED }, user);
+
+    expect(prisma.mentorshipAssignment.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ assignee: expect.objectContaining({ OR: expect.any(Array) }) }) }));
+    expect(prisma.mentorshipAssignment.update).toHaveBeenCalledWith({ where: { id: assignment.id }, data: expect.objectContaining({ status: MentorshipAssignmentStatus.COMPLETED, completedAt: expect.any(Date) }) });
+  });
+
+  it("forces participant-authored classroom notes to shared visibility", async () => {
+    prisma.mentorshipParticipant.findMany.mockResolvedValueOnce([{ id: match.mentee.id }]);
+    prisma.mentorshipRelationship.findFirst.mockResolvedValueOnce({ ...relationship, program: { organizationId: program.organizationId } });
+    prisma.mentorshipNote.create.mockResolvedValueOnce({ id: "note-1", body: "Ready for next week", visibility: MentorshipNoteVisibility.SHARED });
+
+    await service.createPortalNote(relationship.id, { body: "Ready for next week" }, user);
+
+    expect(prisma.mentorshipNote.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ relationshipId: relationship.id, authorId: user.sub, visibility: MentorshipNoteVisibility.SHARED }) }));
+  });
+
+  it("queues idempotent session reminders and overdue-action notices", async () => {
+    const nextSession = { id: "session-next", relationshipId: relationship.id, title: "Weekly check-in", scheduledStart: new Date(Date.now() + 60 * 60 * 1000) };
+    const overdue = { id: "assignment-overdue", relationshipId: relationship.id, assigneeParticipantId: match.mentee.id, title: "Submit reflection", dueDate: new Date(Date.now() - 60 * 60 * 1000) };
+    const notificationRelationship = { ...relationship, program: { id: program.id, organizationId: program.organizationId }, mentee: { ...match.mentee, userId: "mentee-user" }, provider: { ...match.provider, userId: "provider-user" } };
+    prisma.mentorshipSession.findMany.mockResolvedValueOnce([nextSession]);
+    prisma.mentorshipAssignment.findMany.mockResolvedValueOnce([overdue]);
+    prisma.mentorshipRelationship.findFirst.mockResolvedValue(notificationRelationship);
+    prisma.mentorshipNotification.findUnique.mockResolvedValue(null);
+    prisma.mentorshipNotification.create.mockResolvedValue({ id: "notification-1" });
+
+    await expect(service.processNotifications(program.id, user)).resolves.toEqual({ sessions: 1, overdueActions: 1, delivered: 3 });
+    expect(prisma.mentorshipNotification.create).toHaveBeenCalledTimes(3);
+    expect(prisma.mentorshipNotification.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ dedupeKey: expect.stringContaining("session-reminder:session-next") }) }));
+    expect(prisma.mentorshipNotification.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ dedupeKey: expect.stringContaining("assignment-overdue:assignment-overdue") }) }));
   });
 });
