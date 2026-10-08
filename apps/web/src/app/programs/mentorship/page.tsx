@@ -66,7 +66,18 @@ export default function MentorshipPage() {
     event.preventDefault(); setError(undefined);
     const organizationId = programForm.organizationId || organizationsQuery.data?.[0]?.id;
     if (!organizationId) return setError("Create an organization before adding a mentorship program.");
-    const body = { ...programForm, organizationId, code: programForm.code.toUpperCase(), maximumParticipants: optionalNumber(programForm.maximumParticipants) };
+    const body = {
+      ...programForm,
+      organizationId,
+      name: programForm.name.trim(),
+      code: programForm.code.trim().toUpperCase(),
+      description: optionalString(programForm.description),
+      programType: programForm.programType.trim(),
+      defaultDuration: optionalString(programForm.defaultDuration),
+      maximumParticipants: optionalNumber(programForm.maximumParticipants),
+      timeZone: programForm.timeZone.trim(),
+      inquiryEmail: optionalString(programForm.inquiryEmail)
+    };
     if (editingProgramId) updateProgram.mutate({ id: editingProgramId, body }); else createProgram.mutate(body);
   }
 
@@ -152,6 +163,7 @@ function cohortToForm(cohort: MentorshipCohort): CohortForm {
 function label(value: string) { return value.toLowerCase().replaceAll("_", " ").replace(/(^|\s)\S/g, (letter) => letter.toUpperCase()); }
 function weightLabel(value: string) { return label(value.replace(/([a-z])([A-Z])/g, "$1 $2")); }
 function splitList(value: string) { return value.split(",").map((item) => item.trim()).filter(Boolean); }
+function optionalString(value: string) { const trimmed = value.trim(); return trimmed || undefined; }
 function optionalNumber(value: string) { return value === "" ? undefined : Number(value); }
 function optionalDate(value: string) { return value ? dateAtNoon(value) : undefined; }
 function dateAtNoon(value: string) { return new Date(`${value}T12:00:00`).toISOString(); }
