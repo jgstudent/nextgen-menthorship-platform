@@ -822,13 +822,13 @@ export class MentorshipService {
     const program = await this.findProgram(programId);
     const cohort = await this.findCohort(programId, cohortId);
     if (!cohort.matchingEnabled) throw new BadRequestException("Matching is disabled for this cohort.");
-    const participants = await this.prisma.mentorshipParticipant.findMany({ where: { cohortId, status: MentorshipParticipantStatus.MATCHING_POOL, availableForMatch: true }, include: { application: true } });
+    const participants = await this.prisma.mentorshipParticipant.findMany({ where: { cohortId, status: { in: [MentorshipParticipantStatus.MATCHING_POOL, MentorshipParticipantStatus.ACTIVE] }, availableForMatch: true }, include: { application: true } });
     const mentees = participants.filter((item) => item.role === MentorshipParticipantRole.MENTEE);
     const providers = participants.filter((item) => item.role === MentorshipParticipantRole.MENTOR || item.role === MentorshipParticipantRole.TUTOR);
     if (!mentees.length || !providers.length) throw new BadRequestException("Matching requires at least one eligible mentee and one approved mentor or tutor.");
     for (const mentee of mentees) {
       const ranked = providers.map((provider) => ({ provider, ...this.matchScore(mentee.application, provider.application) })).sort((a, b) => b.score - a.score).slice(0, cohort.recommendationCount);
-      for (const recommendation of ranked) await this.prisma.mentorshipMatch.upsert({ where: { cohortId_menteeParticipantId_providerParticipantId: { cohortId, menteeParticipantId: mentee.id, providerParticipantId: recommendation.provider.id } }, create: { programId, cohortId, menteeParticipantId: mentee.id, providerParticipantId: recommendation.provider.id, score: recommendation.score, scoreBreakdown: recommendation.breakdown }, update: { score: recommendation.score, scoreBreakdown: recommendation.breakdown, status: MentorshipMatchStatus.PROPOSED, approvedById: null, approvedAt: null } });
+      for (const recommendation of ranked) await this.prisma.mentorshipMatch.upsert({ where: { cohortId_menteeParticipantId_providerParticipantId: { cohortId, menteeParticipantId: mentee.id, providerParticipantId: recommendation.provider.id } }, create: { programId, cohortId, menteeParticipantId: mentee.id, providerParticipantId: recommendation.provider.id, score: recommendation.score, scoreBreakdown: recommendation.breakdown }, update: { score: recommendation.score, scoreBreakdown: recommendation.breakdown } });
     }
     await this.audit(user, program.organizationId, "mentorship.matches.generated", "MentorshipCohort", cohortId, { mentees: mentees.length, providers: providers.length });
     return this.findMatches(programId);
@@ -837,7 +837,7 @@ export class MentorshipService {
   async decideMatch(programId: string, matchId: string, dto: DecideMentorshipMatchDto, user: AuthenticatedUser) {
     const program = await this.findProgram(programId);
     if (dto.decision !== MentorshipMatchStatus.APPROVED && dto.decision !== MentorshipMatchStatus.REJECTED) throw new BadRequestException("A proposed match can only be approved or rejected.");
-    const existing = await this.prisma.mentorshipMatch.findFirst({ where: { id: matchId, programId }, include: { mentee: { include: { application: true } }, provider: { include: { application: true } } } });
+    const existing = await this.prisma.mentorshipMatch.findFirst({ where: { id: matchId, programId }, include: { mentee: { include: { application: true } }, provider: { include: { application: true } }, relationship: true } });
     if (!existing) throw new NotFoundException("Mentorship match not found.");
     const cohort = await this.findCohort(programId, existing.cohortId);
     if (dto.decision === MentorshipMatchStatus.APPROVED) {
@@ -855,7 +855,8 @@ export class MentorshipService {
     const result = await this.prisma.$transaction(async (transaction) => {
       const decided = await transaction.mentorshipMatch.update({ where: { id: matchId }, data: { status: dto.decision, notes: dto.notes?.trim(), approvedById: dto.decision === MentorshipMatchStatus.APPROVED ? user.sub : null, approvedAt: dto.decision === MentorshipMatchStatus.APPROVED ? new Date() : null } });
       const emailOutboxIds: string[] = [];
-      if (dto.decision === MentorshipMatchStatus.APPROVED) {
+      const newlyApproved = dto.decision === MentorshipMatchStatus.APPROVED && existing.status !== MentorshipMatchStatus.APPROVED && existing.status !== MentorshipMatchStatus.ACTIVE;
+      if (newlyApproved) {
         await transaction.mentorshipRelationship.upsert({
           where: { matchId },
           create: { matchId, programId, cohortId: existing.cohortId, menteeParticipantId: existing.menteeParticipantId, providerParticipantId: existing.providerParticipantId, status: "ACTIVE", startDate: cohort.programStartDate, endDate: cohort.programEndDate },
@@ -868,10 +869,22 @@ export class MentorshipService {
         const menteeEmail = await transaction.mentorshipEmailOutbox.create({ data: { organizationId: program.organizationId, programId, applicationId: existing.mentee.applicationId, recipient: existing.mentee.application.email, subject, body: `Your ${this.roleLabel(existing.provider.role)} match for ${cohort.name} has been confirmed.\n\n${providerName}\n${existing.provider.application.email}\n\nThe program team will provide any additional onboarding instructions.` } });
         const providerEmail = await transaction.mentorshipEmailOutbox.create({ data: { organizationId: program.organizationId, programId, applicationId: existing.provider.applicationId, recipient: existing.provider.application.email, subject, body: `Your mentee match for ${cohort.name} has been confirmed.\n\n${menteeName}\n${existing.mentee.application.email}\n\nThe program team will provide any additional onboarding instructions.` } });
         emailOutboxIds.push(menteeEmail.id, providerEmail.id);
+      } else if (dto.decision === MentorshipMatchStatus.REJECTED && existing.relationship && (existing.relationship.status === "ACTIVE" || existing.relationship.status === "PAUSED")) {
+        await transaction.mentorshipRelationship.update({ where: { id: existing.relationship.id }, data: { status: "ENDED", endDate: new Date() } });
+        for (const participantId of [existing.menteeParticipantId, existing.providerParticipantId]) {
+          const remainingRelationships = await transaction.mentorshipRelationship.count({
+            where: {
+              status: { in: ["ACTIVE", "PAUSED"] },
+              matchId: { not: matchId },
+              OR: [{ menteeParticipantId: participantId }, { providerParticipantId: participantId }]
+            }
+          });
+          await transaction.mentorshipParticipant.update({ where: { id: participantId }, data: { status: remainingRelationships ? MentorshipParticipantStatus.ACTIVE : MentorshipParticipantStatus.MATCHING_POOL } });
+        }
       }
       return { decided, emailOutboxIds };
     });
-    await this.audit(user, program.organizationId, "mentorship.match.decided", "MentorshipMatch", matchId, { decision: dto.decision });
+    await this.audit(user, program.organizationId, "mentorship.match.decided", "MentorshipMatch", matchId, { previousDecision: existing.status, decision: dto.decision, notesUpdated: dto.notes !== undefined });
     await Promise.all(result.emailOutboxIds.map((id) => this.dispatchEmailOutbox(id)));
     return result.decided;
   }

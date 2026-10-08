@@ -1,6 +1,6 @@
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { MentorshipApplicationStatus, MentorshipAttendanceStatus, MentorshipMatchStatus, MentorshipMeetingMode, MentorshipParticipantRole, MentorshipResourceAssignmentStatus, MentorshipResourceType, MentorshipServiceHourStatus, MentorshipSessionStatus, MentorshipStipendStatus, UserRole } from "@prisma/client";
+import { MentorshipApplicationStatus, MentorshipAttendanceStatus, MentorshipMatchStatus, MentorshipMeetingMode, MentorshipParticipantRole, MentorshipParticipantStatus, MentorshipResourceAssignmentStatus, MentorshipResourceType, MentorshipServiceHourStatus, MentorshipSessionStatus, MentorshipStipendStatus, UserRole } from "@prisma/client";
 import { MentorshipService } from "../src/modules/mentorship/mentorship.service";
 import { PrismaService } from "../src/modules/prisma/prisma.service";
 
@@ -42,8 +42,8 @@ describe("MentorshipService program and cohort configuration", () => {
       updateMany: jest.fn().mockResolvedValue({ count: 2 })
     },
     mentorshipEmailOutbox: { create: jest.fn().mockResolvedValue({ id: "email-1" }) },
-    mentorshipMatch: { findFirst: jest.fn().mockResolvedValue(match), update: jest.fn().mockResolvedValue({ ...match, status: MentorshipMatchStatus.APPROVED }) },
-    mentorshipRelationship: { findFirst: jest.fn().mockResolvedValue(null), findMany: jest.fn().mockResolvedValue([]), upsert: jest.fn().mockResolvedValue({ id: "relationship-1" }) },
+    mentorshipMatch: { findFirst: jest.fn().mockResolvedValue(match), findMany: jest.fn().mockResolvedValue([]), update: jest.fn().mockResolvedValue({ ...match, status: MentorshipMatchStatus.APPROVED }), upsert: jest.fn().mockResolvedValue(match) },
+    mentorshipRelationship: { count: jest.fn().mockResolvedValue(0), findFirst: jest.fn().mockResolvedValue(null), findMany: jest.fn().mockResolvedValue([]), upsert: jest.fn().mockResolvedValue({ id: "relationship-1" }), update: jest.fn().mockResolvedValue({ ...relationship, status: "ENDED" }) },
     mentorshipGoal: { findFirst: jest.fn() },
     mentorshipSession: { findFirst: jest.fn().mockResolvedValue(scheduledSession), update: jest.fn().mockResolvedValue({ ...scheduledSession, status: MentorshipSessionStatus.COMPLETED, providerAttendance: MentorshipAttendanceStatus.ATTENDED, menteeAttendance: MentorshipAttendanceStatus.ATTENDED, completedMinutes: 60, notes: "Reviewed goals" }) },
     mentorshipProgressUpdate: { create: jest.fn() },
@@ -112,6 +112,25 @@ describe("MentorshipService program and cohort configuration", () => {
     prisma.mentorshipRelationship.findFirst.mockResolvedValueOnce(relationship);
     await expect(service.decideMatch(program.id, match.id, { decision: MentorshipMatchStatus.APPROVED }, user)).rejects.toThrow("This mentee already has an active mentor relationship in the cohort.");
     expect(prisma.mentorshipRelationship.upsert).not.toHaveBeenCalled();
+  });
+
+  it("keeps decided matches intact when regenerating recommendations for active participants", async () => {
+    prisma.mentorshipCohort.findFirst.mockResolvedValueOnce({ ...cohort, matchingEnabled: true, recommendationCount: 5 });
+    prisma.mentorshipParticipant.findMany.mockResolvedValueOnce([
+      { ...match.mentee, status: MentorshipParticipantStatus.ACTIVE, availableForMatch: true, application: { ...match.mentee.application, languages: ["English"], meetingMode: MentorshipMeetingMode.VIRTUAL, careerInterests: ["Technology"], supportNeeds: [] } },
+      { ...match.provider, status: MentorshipParticipantStatus.ACTIVE, availableForMatch: true, application: { ...match.provider.application, languages: ["English"], meetingMode: MentorshipMeetingMode.VIRTUAL, expertise: { Technology: "Advanced" }, mentoringCapabilities: ["Technology"] } }
+    ]);
+    await service.generateMatches(program.id, cohort.id, user);
+    expect(prisma.mentorshipParticipant.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ status: { in: [MentorshipParticipantStatus.MATCHING_POOL, MentorshipParticipantStatus.ACTIVE] } }) }));
+    expect(prisma.mentorshipMatch.upsert).toHaveBeenCalledWith(expect.objectContaining({ update: expect.not.objectContaining({ status: expect.anything() }) }));
+  });
+
+  it("ends the active relationship when an administrator reverses an approved match", async () => {
+    prisma.mentorshipMatch.findFirst.mockResolvedValueOnce({ ...match, status: MentorshipMatchStatus.APPROVED, relationship });
+    await service.decideMatch(program.id, match.id, { decision: MentorshipMatchStatus.REJECTED, notes: "Reassigned by the program team" }, user);
+    expect(prisma.mentorshipRelationship.update).toHaveBeenCalledWith({ where: { id: relationship.id }, data: { status: "ENDED", endDate: expect.any(Date) } });
+    expect(prisma.mentorshipParticipant.update).toHaveBeenCalledTimes(2);
+    expect(prisma.organizationAuditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ metadata: expect.objectContaining({ previousDecision: MentorshipMatchStatus.APPROVED, decision: MentorshipMatchStatus.REJECTED }) }) }));
   });
 
   it("requires attendance for both people before completing a mentorship session", async () => {
