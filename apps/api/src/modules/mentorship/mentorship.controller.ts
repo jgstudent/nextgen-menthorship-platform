@@ -29,6 +29,7 @@ import { DeleteMentorshipProgramDto } from "./dto/delete-mentorship-program.dto"
 import { CreateMentorshipAssignmentDto } from "./dto/create-mentorship-assignment.dto";
 import { UpdateMentorshipAssignmentDto } from "./dto/update-mentorship-assignment.dto";
 import { CreateMentorshipNoteDto } from "./dto/create-mentorship-note.dto";
+import { RetryMentorshipEmailOutboxDto } from "./dto/retry-mentorship-email-outbox.dto";
 
 @Controller("mentorship")
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -231,6 +232,12 @@ export class MentorshipController {
   @Post("programs/:programId/notifications/process")
   processNotifications(@Param("programId") programId: string, @CurrentUser() user: AuthenticatedUser) {
     return this.mentorship.processNotifications(programId, user);
+  }
+
+  @Post("programs/:programId/notifications/email-outbox/retry")
+  @Roles(UserRole.SUPER_ADMIN)
+  retryPendingEmails(@Param("programId") programId: string, @Body() dto: RetryMentorshipEmailOutboxDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.mentorship.retryPendingEmails(programId, dto.recipients, user);
   }
 
   @Post("programs/:programId/cohorts/:cohortId/matches/generate")

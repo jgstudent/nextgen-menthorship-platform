@@ -106,11 +106,19 @@ describe("Mentorship HTTP boundary with existing authentication", () => {
 
   it("keeps participant approval and account invitation restricted to Super Admin", async () => {
     account!.role = UserRole.EXECUTIVE;
+    const headers = { Authorization: `Bearer ${token()}`, "Content-Type": "application/json" };
     const response = await fetch(`${base}/api/mentorship/programs/program-1/applications/application-1/review`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token()}`, "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({ decision: "APPROVED" })
     });
     expect(response.status).toBe(403);
+
+    const retryResponse = await fetch(`${base}/api/mentorship/programs/program-1/notifications/email-outbox/retry`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ recipients: ["participant@example.test"] })
+    });
+    expect(retryResponse.status).toBe(403);
   });
 });

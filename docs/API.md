@@ -269,8 +269,11 @@ Administrative endpoints require a Pilye `SUPER_ADMIN` or `EXECUTIVE` token unle
 - `PATCH /mentorship/programs/:programId/relationships/:relationshipId/assignments/:assignmentId`
 - `POST /mentorship/programs/:programId/relationships/:relationshipId/notes` supports `SHARED` and `STAFF_ONLY` visibility.
 - `POST /mentorship/programs/:programId/notifications/process` idempotently queues reminders for sessions in the next 24 hours and overdue assignments. A trusted scheduler may call this endpoint periodically.
+- `POST /mentorship/programs/:programId/notifications/email-outbox/retry` retries up to 100 pending messages. This endpoint is restricted to `SUPER_ADMIN` and requires a non-empty `recipients` email array so a retry cannot accidentally target the full outbox.
 - `GET /mentorship/portal` returns only classrooms linked to the signed-in participant. Staff-only notes are excluded.
 - `PATCH /mentorship/portal/assignments/:assignmentId` permits only the assigned participant to update status.
 - `POST /mentorship/portal/relationships/:relationshipId/notes` always creates a shared note and requires classroom membership.
 
 Session creation sends schedule notices. Participant rescheduling and cancellation send relationship-scoped email and in-app notices. Notification records use deduplication keys so reminder processing is safe to retry.
+
+Email delivery supports Resend directly with `RESEND_API_KEY` and `EMAIL_FROM`. The provider-neutral `EMAIL_DELIVERY_URL` webhook remains available as a fallback.

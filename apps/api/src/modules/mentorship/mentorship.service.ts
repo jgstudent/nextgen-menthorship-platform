@@ -973,6 +973,27 @@ export class MentorshipService {
     return { sessions: sessions.length, overdueActions: overdue.length, delivered };
   }
 
+  async retryPendingEmails(programId: string, recipients: string[], user: AuthenticatedUser) {
+    const program = await this.findProgram(programId);
+    const normalizedRecipients = [...new Set(recipients.map((recipient) => recipient.trim().toLowerCase()))];
+    if (!normalizedRecipients.length) throw new BadRequestException("At least one email recipient is required.");
+    const pending = await this.prisma.mentorshipEmailOutbox.findMany({
+      where: { programId, sentAt: null, recipient: { in: normalizedRecipients } },
+      orderBy: { createdAt: "asc" },
+      take: 100,
+      select: { id: true }
+    });
+    let sent = 0;
+    let failed = 0;
+    for (const email of pending) {
+      const result = await this.dispatchEmailOutbox(email.id);
+      if (result === "sent") sent += 1;
+      if (result === "failed") failed += 1;
+    }
+    await this.audit(user, program.organizationId, "mentorship.email_outbox.retried", "MentorshipProgram", programId, { attempted: pending.length, sent, failed, recipients: normalizedRecipients.length });
+    return { attempted: pending.length, sent, failed };
+  }
+
   async generateMatches(programId: string, cohortId: string, user: AuthenticatedUser) {
     const program = await this.findProgram(programId);
     const cohort = await this.findCohort(programId, cohortId);
@@ -1335,23 +1356,49 @@ export class MentorshipService {
     return delivered;
   }
 
-  private async dispatchEmailOutbox(id: string) {
-    const endpoint = this.config.get<string>("EMAIL_DELIVERY_URL");
-    if (!endpoint) return;
+  private async dispatchEmailOutbox(id: string): Promise<"sent" | "skipped" | "failed"> {
     const queued = await this.prisma.mentorshipEmailOutbox.findUnique({ where: { id } });
-    if (!queued || queued.sentAt) return;
+    if (!queued || queued.sentAt) return "skipped";
     try {
-      const token = this.config.get<string>("EMAIL_DELIVERY_TOKEN");
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ to: queued.recipient, subject: queued.subject, text: queued.body, referenceId: queued.id })
-      });
+      const resendApiKey = this.config.get<string>("RESEND_API_KEY")?.trim();
+      const webhookEndpoint = this.config.get<string>("EMAIL_DELIVERY_URL")?.trim();
+      let response: Response;
+      if (resendApiKey) {
+        const from = this.config.get<string>("EMAIL_FROM")?.trim();
+        if (!from) throw new Error("EMAIL_FROM is required when RESEND_API_KEY is configured.");
+        const replyTo = this.config.get<string>("EMAIL_REPLY_TO")?.trim();
+        response = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${resendApiKey}`,
+            "Idempotency-Key": `pilye/${queued.id}`
+          },
+          body: JSON.stringify({
+            from,
+            to: [queued.recipient],
+            subject: queued.subject,
+            text: queued.body,
+            ...(replyTo ? { reply_to: replyTo } : {})
+          })
+        });
+      } else if (webhookEndpoint) {
+        const token = this.config.get<string>("EMAIL_DELIVERY_TOKEN")?.trim();
+        response = await fetch(webhookEndpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          body: JSON.stringify({ to: queued.recipient, subject: queued.subject, text: queued.body, referenceId: queued.id })
+        });
+      } else {
+        throw new Error("Email delivery is not configured.");
+      }
       if (!response.ok) throw new Error(`Email delivery returned ${response.status}.`);
       await this.prisma.mentorshipEmailOutbox.update({ where: { id }, data: { sentAt: new Date(), lastError: null } });
+      return "sent";
     } catch (error) {
       const message = error instanceof Error ? error.message.slice(0, 500) : "Unknown email delivery error.";
       await this.prisma.mentorshipEmailOutbox.update({ where: { id }, data: { lastError: message } }).catch(() => undefined);
+      return "failed";
     }
   }
 

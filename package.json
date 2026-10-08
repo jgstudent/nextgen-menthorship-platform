@@ -15,6 +15,7 @@
     "db:seed": "pnpm --filter @nextgen/api prisma:seed",
     "staging:seed-qa": "docker compose --env-file .env.staging -f docker-compose.staging.yml run --rm qa-seed",
     "staging:verify": "node scripts/verify-pilye-staging.mjs",
+    "staging:email:retry": "node scripts/retry-pilye-email-outbox.mjs",
     "db:reset-admin": "pnpm --filter @nextgen/api prisma:reset-admin",
     "typecheck": "pnpm -r typecheck",
     "staging:env": "node scripts/setup-staging-env.mjs",

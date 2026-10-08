@@ -47,7 +47,12 @@ describe("MentorshipService program and cohort configuration", () => {
       update: jest.fn(),
       updateMany: jest.fn().mockResolvedValue({ count: 2 })
     },
-    mentorshipEmailOutbox: { create: jest.fn().mockResolvedValue({ id: "email-1" }) },
+    mentorshipEmailOutbox: {
+      create: jest.fn().mockResolvedValue({ id: "email-1" }),
+      findMany: jest.fn().mockResolvedValue([]),
+      findUnique: jest.fn(),
+      update: jest.fn().mockResolvedValue({})
+    },
     mentorshipMatch: { findFirst: jest.fn().mockResolvedValue(match), findMany: jest.fn().mockResolvedValue([]), update: jest.fn().mockResolvedValue({ ...match, status: MentorshipMatchStatus.APPROVED }), upsert: jest.fn().mockResolvedValue(match) },
     mentorshipRelationship: { count: jest.fn().mockResolvedValue(0), findFirst: jest.fn().mockResolvedValue(null), findMany: jest.fn().mockResolvedValue([]), upsert: jest.fn().mockResolvedValue({ id: "relationship-1" }), update: jest.fn().mockResolvedValue({ ...relationship, status: "ENDED" }) },
     mentorshipGoal: { findFirst: jest.fn() },
@@ -63,11 +68,15 @@ describe("MentorshipService program and cohort configuration", () => {
     $transaction: jest.fn(),
     organizationAuditLog: { create: jest.fn().mockResolvedValue({}) }
   };
-  const service = new MentorshipService(prisma as unknown as PrismaService, { get: jest.fn() } as unknown as ConfigService);
+  const configValues = new Map<string, string>();
+  const config = { get: jest.fn((key: string) => configValues.get(key)) };
+  const service = new MentorshipService(prisma as unknown as PrismaService, config as unknown as ConfigService);
   const user = { sub: "admin-1", email: "admin@example.test", role: UserRole.SUPER_ADMIN };
 
   beforeEach(() => {
     jest.clearAllMocks();
+    configValues.clear();
+    config.get.mockImplementation((key: string) => configValues.get(key));
     prisma.user.findUnique.mockResolvedValue(null);
     prisma.$transaction.mockImplementation(async (operation: ((transaction: typeof prisma) => unknown) | Promise<unknown>[]) => Array.isArray(operation) ? Promise.all(operation) : operation(prisma));
   });
@@ -366,5 +375,44 @@ describe("MentorshipService program and cohort configuration", () => {
     expect(prisma.mentorshipNotification.create).toHaveBeenCalledTimes(3);
     expect(prisma.mentorshipNotification.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ dedupeKey: expect.stringContaining("session-reminder:session-next") }) }));
     expect(prisma.mentorshipNotification.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ dedupeKey: expect.stringContaining("assignment-overdue:assignment-overdue") }) }));
+  });
+
+  it("retries only selected pending emails through Resend and marks them sent", async () => {
+    const queued = { id: "email-acceptance-1", sentAt: null, recipient: "mentee@example.test", subject: "Pilye invitation", body: "Activate your account." };
+    configValues.set("RESEND_API_KEY", "re_test_key");
+    configValues.set("EMAIL_FROM", "Pilye <no-reply@nextgenhaitian.org>");
+    configValues.set("EMAIL_REPLY_TO", "support@nextgenhaitian.org");
+    prisma.mentorshipEmailOutbox.findMany.mockResolvedValueOnce([{ id: queued.id }]);
+    prisma.mentorshipEmailOutbox.findUnique.mockResolvedValueOnce(queued);
+    const fetchMock = jest.spyOn(global, "fetch").mockResolvedValueOnce(new Response(JSON.stringify({ id: "resend-1" }), { status: 200 }));
+
+    await expect(service.retryPendingEmails(program.id, [" MENTEE@example.test "], user)).resolves.toEqual({ attempted: 1, sent: 1, failed: 0 });
+
+    expect(prisma.mentorshipEmailOutbox.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { programId: program.id, sentAt: null, recipient: { in: ["mentee@example.test"] } },
+      take: 100
+    }));
+    expect(fetchMock).toHaveBeenCalledWith("https://api.resend.com/emails", expect.objectContaining({
+      method: "POST",
+      headers: expect.objectContaining({ Authorization: "Bearer re_test_key", "Idempotency-Key": `pilye/${queued.id}` }),
+      body: JSON.stringify({ from: "Pilye <no-reply@nextgenhaitian.org>", to: [queued.recipient], subject: queued.subject, text: queued.body, reply_to: "support@nextgenhaitian.org" })
+    }));
+    expect(prisma.mentorshipEmailOutbox.update).toHaveBeenCalledWith({ where: { id: queued.id }, data: { sentAt: expect.any(Date), lastError: null } });
+    fetchMock.mockRestore();
+  });
+
+  it("keeps a pending email queued and records the provider error", async () => {
+    const queued = { id: "email-acceptance-2", sentAt: null, recipient: "mentor@example.test", subject: "Pilye match", body: "Your match is confirmed." };
+    configValues.set("RESEND_API_KEY", "re_test_key");
+    configValues.set("EMAIL_FROM", "Pilye <no-reply@nextgenhaitian.org>");
+    prisma.mentorshipEmailOutbox.findMany.mockResolvedValueOnce([{ id: queued.id }]);
+    prisma.mentorshipEmailOutbox.findUnique.mockResolvedValueOnce(queued);
+    const fetchMock = jest.spyOn(global, "fetch").mockResolvedValueOnce(new Response("rejected", { status: 422 }));
+
+    await expect(service.retryPendingEmails(program.id, [queued.recipient], user)).resolves.toEqual({ attempted: 1, sent: 0, failed: 1 });
+
+    expect(prisma.mentorshipEmailOutbox.update).toHaveBeenCalledWith({ where: { id: queued.id }, data: { lastError: "Email delivery returned 422." } });
+    expect(prisma.mentorshipEmailOutbox.update).not.toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ sentAt: expect.anything() }) }));
+    fetchMock.mockRestore();
   });
 });

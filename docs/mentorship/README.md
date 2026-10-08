@@ -74,7 +74,7 @@ Private mentor notes and administrative records require separate audiences, resp
 
 Mentorship is an organization entitlement (`MENTORSHIP`), not a mandatory portal feature or a global user role. Disabled organizations do not see the navigation and the API rejects access to their mentorship programs. Mentor, Tutor, and Mentee remain program participation roles.
 
-Each program can enable a separate public application token. The public route does not require a portal account and only exposes active program/cohort form configuration. A valid submission creates a submitted application, an in-portal notification, an audit record, and a durable email-outbox item. If `EMAIL_DELIVERY_URL` is configured, the API posts `{ to, subject, text, referenceId }` to that provider-neutral delivery endpoint and marks successful delivery. Without a configured delivery endpoint, the email remains queued while the portal notification remains available.
+Each program can enable a separate public application token. The public route does not require a portal account and only exposes active program/cohort form configuration. A valid submission creates a submitted application, an in-portal notification, an audit record, and a durable email-outbox item. Production-like staging can send directly through Resend with `RESEND_API_KEY` and `EMAIL_FROM`; the provider-neutral `EMAIL_DELIVERY_URL` webhook remains a fallback. Without a configured provider, the email remains queued while the portal notification remains available.
 
 The NextGen public website is intentionally not modified in this repository. Its Join Us hyperlink/embed work is a separate deployment task using the generated public application URL.
 

@@ -30,6 +30,9 @@ const values = {
   DOCUSEAL_BASE_URL: "",
   DOCUSEAL_API_KEY: "",
   DOCUSEAL_WEBHOOK_SECRET: "",
+  RESEND_API_KEY: "",
+  EMAIL_FROM: "Pilye <no-reply@nextgenhaitian.org>",
+  EMAIL_REPLY_TO: "",
   EMAIL_DELIVERY_URL: "",
   EMAIL_DELIVERY_TOKEN: ""
 };

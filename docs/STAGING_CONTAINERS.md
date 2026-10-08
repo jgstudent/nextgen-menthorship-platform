@@ -64,7 +64,15 @@ Before launching on a VM, edit `.env.staging`:
 
 Approving an eligible applicant now links the application to an existing account with the same email address, or creates an invited account and queues a single-use activation link. New-account links expire after seven days and let the participant create their password at `/activate/<token>`.
 
-Set `EMAIL_DELIVERY_URL` (and `EMAIL_DELIVERY_TOKEN` when required by the provider) before expecting invitation messages to leave the email outbox. Without an email delivery endpoint, the decision and invitation remain safely queued but are not sent externally. Future Potay sign-in can replace the password activation step without changing the application-to-account linkage.
+For Resend, set `RESEND_API_KEY` and a verified sender such as `EMAIL_FROM="Pilye <no-reply@nextgenhaitian.org>"`. Set `EMAIL_REPLY_TO` only when a monitored reply address is available. The older provider-neutral `EMAIL_DELIVERY_URL` and `EMAIL_DELIVERY_TOKEN` integration remains supported as a fallback. Without either provider, invitations remain safely queued and the outbox records the configuration error.
+
+After configuring Resend, retry only the intended acceptance-test recipients:
+
+```bash
+npm run staging:email:retry -- recipient1@example.org recipient2@example.org
+```
+
+The command refuses to run without an explicit recipient list. The API restricts retries to Super Admins, caps each attempt at 100 pending messages, uses a stable provider idempotency key, and audits the result. Future Potay sign-in can replace the password activation step without changing the application-to-account linkage.
 
 Archiving a program preserves its records. Permanent deletion is limited to Super Admins, requires the exact program-code confirmation, and cascades through all program-owned mentorship records. Shared Pilye/Potay identity accounts are intentionally preserved because they may belong to other products or programs.
 
