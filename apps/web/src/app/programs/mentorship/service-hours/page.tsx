@@ -14,6 +14,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api";
+import { formatDate } from "@/lib/date";
 import { canPreviewMentorship } from "@/lib/permissions";
 import type { MentorshipProgram, MentorshipServiceHour, MentorshipServiceHourReport, MentorshipServiceHourStatus, MentorshipStipendStatus } from "@/types/mentorship";
 
@@ -74,6 +75,5 @@ export default function MentorshipServiceHoursPage() {
 
 function Metric({ icon: Icon, label: text, value }: { icon: typeof Clock3; label: string; value: string | number }) { return <Card className="p-4"><Icon className="h-5 w-5 text-[var(--primary-blue)]" /><p className="mt-3 text-xs font-semibold uppercase text-[var(--text-secondary)]">{text}</p><p className="mt-1 text-2xl font-bold">{value}</p></Card>; }
 function formatHours(minutes: number) { return `${Math.round(minutes / 6) / 10} hr${minutes === 60 ? "" : "s"}`; }
-function formatDate(value: string) { return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(new Date(value)); }
 function label(value: string) { return value.toLowerCase().replaceAll("_", " ").replace(/(^|\s)\S/g, (letter) => letter.toUpperCase()); }
 function messageFrom(value: unknown) { if (!(value instanceof Error)) return "The request could not be completed."; try { const parsed = JSON.parse(value.message) as { message?: string | string[] }; return Array.isArray(parsed.message) ? parsed.message.join(" ") : parsed.message ?? value.message; } catch { return value.message; } }

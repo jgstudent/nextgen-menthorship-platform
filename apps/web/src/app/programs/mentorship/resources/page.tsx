@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api";
+import { formatDate } from "@/lib/date";
 import { canPreviewMentorship } from "@/lib/permissions";
 import type { MentorshipProgram, MentorshipRelationship, MentorshipResource, MentorshipResourceType } from "@/types/mentorship";
 
@@ -102,5 +103,4 @@ function normalizeResourceUrl(value: string) {
   return `${protocol}${address}`;
 }
 function label(value: string) { return value.toLowerCase().replaceAll("_", " ").replace(/(^|\s)\S/g, (letter) => letter.toUpperCase()); }
-function formatDate(value: string) { return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(new Date(value)); }
 function messageFrom(value: unknown) { if (!(value instanceof Error)) return "The request could not be completed."; try { const parsed = JSON.parse(value.message) as { message?: string | string[] }; return Array.isArray(parsed.message) ? parsed.message.join(" ") : parsed.message ?? value.message; } catch { return value.message; } }

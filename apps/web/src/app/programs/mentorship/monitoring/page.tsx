@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { api } from "@/lib/api";
+import { formatDate } from "@/lib/date";
 import { canPreviewMentorship } from "@/lib/permissions";
 import type { MentorshipMonitoringReport, MentorshipProgram } from "@/types/mentorship";
 
@@ -92,6 +93,5 @@ function downloadCsv(report: MentorshipMonitoringReport, rows: MentorshipMonitor
 }
 
 function csvCell(value: string | number) { return `"${String(value).replaceAll('"', '""')}"`; }
-function formatDate(value: string) { return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(new Date(value)); }
 function formatDateTime(value: string) { return new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)); }
 function label(value: string) { return value.toLowerCase().replaceAll("_", " ").replace(/(^|\s)\S/g, (letter) => letter.toUpperCase()); }

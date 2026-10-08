@@ -12,6 +12,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/components/auth/auth-provider";
 import { api } from "@/lib/api";
+import { formatDate } from "@/lib/date";
 import type { MentorshipAssignmentStatus, MentorshipMeetingMode, MentorshipPortal, MentorshipResourceAssignmentStatus, MentorshipSession } from "@/types/mentorship";
 
 export default function MyMentorshipPage() {
@@ -162,7 +163,6 @@ function splitList(value: string) { return value.split(",").map((item) => item.t
 function listValue(value: unknown) { return Array.isArray(value) ? value.join(", ") : typeof value === "string" ? value : ""; }
 function hasMeaningfulValues(value: Record<string, unknown>) { return Object.values(value ?? {}).some((entry) => Array.isArray(entry) ? entry.length > 0 : typeof entry === "string" ? entry.trim().length > 0 : Boolean(entry)); }
 function label(value: string) { return value.toLowerCase().replaceAll("_", " ").replace(/(^|\s)\S/g, (letter) => letter.toUpperCase()); }
-function formatDate(value: string) { return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(new Date(value)); }
 function formatDateTime(value: string) { return new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)); }
 function formatTime(value: string) { return new Intl.DateTimeFormat("en-US", { timeStyle: "short" }).format(new Date(value)); }
 function toLocalInput(value: string) { const date = new Date(value); const offset = date.getTimezoneOffset(); return new Date(date.getTime() - offset * 60000).toISOString().slice(0, 16); }
