@@ -157,6 +157,7 @@ services:
       retries: 12
     networks:
       - backend
+      - outbound
 
   web:
     build:
@@ -193,6 +194,7 @@ networks:
   frontend:
   backend:
     internal: true
+  outbound:
 
 volumes:
   staging-postgres-data:

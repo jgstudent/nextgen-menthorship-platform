@@ -77,3 +77,5 @@ The command refuses to run without an explicit recipient list. The API restricts
 Archiving a program preserves its records. Permanent deletion is limited to Super Admins, requires the exact program-code confirmation, and cascades through all program-owned mentorship records. Shared Pilye/Potay identity accounts are intentionally preserved because they may belong to other products or programs.
 
 Terminate TLS with a reverse proxy on the VM. Only the web entry point should be public. Keep the API, database, Redis, and object storage protected by the VM firewall and Docker networks.
+
+The API also joins a dedicated outbound-only Compose network so transactional email can reach Resend. Its host binding remains loopback-only; PostgreSQL, Redis, and object storage remain on the isolated internal network only.
