@@ -33,7 +33,7 @@ RUN mkdir -p /app/prisma-engines \
 FROM base AS runtime
 ENV NODE_ENV=production
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends curl \
+  && apt-get install -y --no-install-recommends ca-certificates curl \
   && rm -rf /var/lib/apt/lists/*
 COPY --from=build --chown=node:node /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml ./
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
