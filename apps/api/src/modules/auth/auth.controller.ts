@@ -6,6 +6,7 @@ import { ChangePasswordDto } from "./dto/change-password.dto";
 import { LoginDto } from "./dto/login.dto";
 import { RegisterDto } from "./dto/register.dto";
 import { UpdateProfileDto } from "./dto/update-profile.dto";
+import { ActivateInvitationDto } from "./dto/activate-invitation.dto";
 import { JwtAuthGuard } from "./jwt-auth.guard";
 
 @Controller("auth")
@@ -15,6 +16,11 @@ export class AuthController {
   @Post("register")
   register(@Body() dto: RegisterDto) {
     return this.auth.register(dto);
+  }
+
+  @Post("activate")
+  activateInvitation(@Body() dto: ActivateInvitationDto) {
+    return this.auth.activateInvitation(dto);
   }
 
   @Post("login")

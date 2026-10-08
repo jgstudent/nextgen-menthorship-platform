@@ -51,4 +51,12 @@ Before launching on a VM, edit `.env.staging`:
 - replace the default administrator email if required;
 - configure email and DocuSeal values only when those integrations are ready.
 
+## Participant account invitations
+
+Approving an eligible applicant now links the application to an existing account with the same email address, or creates an invited account and queues a single-use activation link. New-account links expire after seven days and let the participant create their password at `/activate/<token>`.
+
+Set `EMAIL_DELIVERY_URL` (and `EMAIL_DELIVERY_TOKEN` when required by the provider) before expecting invitation messages to leave the email outbox. Without an email delivery endpoint, the decision and invitation remain safely queued but are not sent externally. Future Potay sign-in can replace the password activation step without changing the application-to-account linkage.
+
+Archiving a program preserves its records. Permanent deletion is limited to Super Admins, requires the exact program-code confirmation, and cascades through all program-owned mentorship records. Shared Pilye/Potay identity accounts are intentionally preserved because they may belong to other products or programs.
+
 Terminate TLS with a reverse proxy on the VM. Only the web entry point should be public. Keep the API, database, Redis, and object storage protected by the VM firewall and Docker networks.

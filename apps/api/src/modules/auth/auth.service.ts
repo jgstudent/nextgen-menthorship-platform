@@ -1,13 +1,15 @@
-import { ForbiddenException, Injectable, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Injectable, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { Prisma, UserRole, UserStatus } from "@prisma/client";
 import * as argon2 from "argon2";
+import { createHash } from "node:crypto";
 import { publicUserSelect } from "../../common/selects/public-user.select";
 import { PrismaService } from "../prisma/prisma.service";
 import { ChangePasswordDto } from "./dto/change-password.dto";
 import { LoginDto } from "./dto/login.dto";
 import { RegisterDto } from "./dto/register.dto";
 import { UpdateProfileDto } from "./dto/update-profile.dto";
+import { ActivateInvitationDto } from "./dto/activate-invitation.dto";
 
 @Injectable()
 export class AuthService {
@@ -21,6 +23,29 @@ export class AuthService {
   async register(dto: RegisterDto) {
     void dto;
     throw new ForbiddenException("Invite-based registration is not enabled yet. Ask an administrator to create your account.");
+  }
+
+  async activateInvitation(dto: ActivateInvitationDto) {
+    const tokenHash = createHash("sha256").update(dto.token).digest("hex");
+    const invitation = await this.prisma.mentorshipAccountInvitation.findUnique({ where: { tokenHash }, include: { user: true } });
+    if (!invitation || invitation.acceptedAt || invitation.expiresAt <= new Date()) {
+      throw new BadRequestException("This invitation is invalid or has expired.");
+    }
+    if (invitation.user.status !== UserStatus.INVITED) {
+      throw new BadRequestException("This account has already been activated. Sign in instead.");
+    }
+
+    const password = await argon2.hash(dto.password);
+    const activatedAt = new Date();
+    await this.prisma.$transaction(async (transaction) => {
+      const claimed = await transaction.mentorshipAccountInvitation.updateMany({ where: { id: invitation.id, acceptedAt: null, expiresAt: { gt: activatedAt } }, data: { acceptedAt: activatedAt } });
+      if (claimed.count !== 1) throw new BadRequestException("This invitation is invalid or has expired.");
+      await transaction.user.update({ where: { id: invitation.userId }, data: { password, status: UserStatus.ACTIVE, isActive: true } });
+      await transaction.mentorshipApplication.updateMany({ where: { email: invitation.user.email, status: { in: ["APPROVED", "ELIGIBLE"] } }, data: { applicantUserId: invitation.userId } });
+      await transaction.mentorshipParticipant.updateMany({ where: { application: { email: invitation.user.email } }, data: { userId: invitation.userId } });
+    });
+    await this.audit(invitation.userId, "auth.invitation_accepted", "MentorshipAccountInvitation", invitation.id);
+    return { success: true, email: invitation.user.email };
   }
 
   async login(dto: LoginDto) {

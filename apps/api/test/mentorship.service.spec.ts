@@ -1,6 +1,6 @@
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { MentorshipApplicationStatus, MentorshipAttendanceStatus, MentorshipMatchStatus, MentorshipMeetingMode, MentorshipParticipantRole, MentorshipParticipantStatus, MentorshipResourceAssignmentStatus, MentorshipResourceType, MentorshipServiceHourStatus, MentorshipSessionStatus, MentorshipStipendStatus, UserRole } from "@prisma/client";
+import { MentorshipApplicationStatus, MentorshipAttendanceStatus, MentorshipMatchStatus, MentorshipMeetingMode, MentorshipParticipantRole, MentorshipParticipantStatus, MentorshipResourceAssignmentStatus, MentorshipResourceType, MentorshipServiceHourStatus, MentorshipSessionStatus, MentorshipStipendStatus, UserRole, UserStatus } from "@prisma/client";
 import { MentorshipService } from "../src/modules/mentorship/mentorship.service";
 import { PrismaService } from "../src/modules/prisma/prisma.service";
 
@@ -13,6 +13,7 @@ describe("MentorshipService program and cohort configuration", () => {
     provider: { id: "provider-1", applicationId: "provider-application", role: MentorshipParticipantRole.MENTOR, application: { firstName: "Jean", lastName: "Pierre", email: "jean@example.test" } }
   };
   const application = { id: "application-1", programId: program.id, cohortId: cohort.id, applicantUserId: null, role: MentorshipParticipantRole.MENTOR, status: MentorshipApplicationStatus.SUBMITTED, firstName: "Jean", lastName: "Pierre", email: "jean@example.test", timeZone: "America/New_York", languages: ["English"], expertise: { Cybersecurity: "Advanced" }, mentoringCapabilities: ["Career exploration"], supportNeeds: [], goals: null };
+  const invitedUser = { id: "user-1", email: application.email, status: UserStatus.INVITED, role: UserRole.VOLUNTEER, isActive: false };
   const relationship = { id: "relationship-1", programId: program.id, cohortId: cohort.id, status: "ACTIVE", cohort, mentee: match.mentee, provider: match.provider };
   const scheduledSession = { id: "session-1", relationshipId: relationship.id, status: MentorshipSessionStatus.SCHEDULED, providerAttendance: MentorshipAttendanceStatus.PENDING, menteeAttendance: MentorshipAttendanceStatus.PENDING, scheduledStart: new Date("2027-10-01T14:00:00.000Z"), scheduledEnd: new Date("2027-10-01T15:00:00.000Z"), completedMinutes: 0, notes: null };
   const prisma = {
@@ -20,8 +21,10 @@ describe("MentorshipService program and cohort configuration", () => {
     mentorshipProgram: {
       create: jest.fn().mockResolvedValue(program),
       findFirst: jest.fn().mockResolvedValue(program),
+      findUnique: jest.fn(),
       findMany: jest.fn().mockResolvedValue([program]),
-      update: jest.fn().mockResolvedValue(program)
+      update: jest.fn().mockResolvedValue(program),
+      delete: jest.fn().mockResolvedValue(program)
     },
     mentorshipCohort: {
       create: jest.fn().mockResolvedValue(cohort),
@@ -31,8 +34,11 @@ describe("MentorshipService program and cohort configuration", () => {
     mentorshipApplication: {
       create: jest.fn().mockResolvedValue(application),
       findFirst: jest.fn().mockResolvedValue(application),
-      update: jest.fn().mockResolvedValue({ ...application, status: MentorshipApplicationStatus.APPROVED })
+      update: jest.fn().mockResolvedValue({ ...application, status: MentorshipApplicationStatus.APPROVED, applicantUserId: invitedUser.id }),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 })
     },
+    user: { findUnique: jest.fn().mockResolvedValue(null), create: jest.fn().mockResolvedValue(invitedUser), update: jest.fn() },
+    mentorshipAccountInvitation: { findUnique: jest.fn(), upsert: jest.fn().mockResolvedValue({ id: "invitation-1" }), update: jest.fn() },
     mentorshipParticipant: {
       count: jest.fn().mockResolvedValue(0),
       findFirst: jest.fn(),
@@ -59,6 +65,7 @@ describe("MentorshipService program and cohort configuration", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    prisma.user.findUnique.mockResolvedValue(null);
     prisma.$transaction.mockImplementation(async (operation: ((transaction: typeof prisma) => unknown) | Promise<unknown>[]) => Array.isArray(operation) ? Promise.all(operation) : operation(prisma));
   });
 
@@ -90,9 +97,34 @@ describe("MentorshipService program and cohort configuration", () => {
 
   it("creates a matching-pool participant only after the correct admin decision", async () => {
     await service.reviewApplication(program.id, application.id, { decision: MentorshipApplicationStatus.APPROVED, notes: "Eligible mentor" }, user);
-    expect(prisma.mentorshipParticipant.upsert).toHaveBeenCalledWith(expect.objectContaining({ create: expect.objectContaining({ applicationId: application.id, availableForMatch: true, role: MentorshipParticipantRole.MENTOR }) }));
-    expect(prisma.mentorshipEmailOutbox.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ recipient: application.email, applicationId: application.id }) }));
+    expect(prisma.user.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ email: application.email, role: UserRole.VOLUNTEER, status: UserStatus.INVITED, isActive: false }) }));
+    expect(prisma.mentorshipApplication.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ applicantUserId: invitedUser.id }) }));
+    expect(prisma.mentorshipParticipant.upsert).toHaveBeenCalledWith(expect.objectContaining({ create: expect.objectContaining({ applicationId: application.id, userId: invitedUser.id, availableForMatch: true, role: MentorshipParticipantRole.MENTOR }) }));
+    expect(prisma.mentorshipAccountInvitation.upsert).toHaveBeenCalledWith(expect.objectContaining({ create: expect.objectContaining({ applicationId: application.id, userId: invitedUser.id, programId: program.id }) }));
+    expect(prisma.mentorshipEmailOutbox.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ recipient: application.email, applicationId: application.id, body: expect.stringContaining("/activate/") }) }));
     expect(prisma.organizationAuditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ action: "mentorship.application.reviewed" }) }));
+  });
+
+  it("links an approved application to an existing active account without creating an invitation", async () => {
+    prisma.user.findUnique.mockResolvedValueOnce({ ...invitedUser, status: UserStatus.ACTIVE, isActive: true });
+    await service.reviewApplication(program.id, application.id, { decision: MentorshipApplicationStatus.APPROVED }, user);
+    expect(prisma.user.create).not.toHaveBeenCalled();
+    expect(prisma.mentorshipParticipant.upsert).toHaveBeenCalledWith(expect.objectContaining({ create: expect.objectContaining({ userId: invitedUser.id }) }));
+    expect(prisma.mentorshipAccountInvitation.upsert).not.toHaveBeenCalled();
+    expect(prisma.mentorshipEmailOutbox.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ body: expect.stringContaining("existing Pilye account") }) }));
+  });
+
+  it("permanently deletes a program only after exact confirmation", async () => {
+    prisma.mentorshipProgram.findUnique.mockResolvedValueOnce({ ...program, _count: { cohorts: 1, applications: 3, participants: 3, relationships: 1, resources: 2 } });
+    await service.deleteProgramPermanently(program.id, "DELETE CSMP", user);
+    expect(prisma.mentorshipProgram.delete).toHaveBeenCalledWith({ where: { id: program.id } });
+    expect(prisma.organizationAuditLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ action: "mentorship.program.permanently_deleted" }) }));
+  });
+
+  it("refuses permanent deletion when the confirmation does not match", async () => {
+    prisma.mentorshipProgram.findUnique.mockResolvedValueOnce({ ...program, _count: { cohorts: 1, applications: 3, participants: 3, relationships: 1, resources: 2 } });
+    await expect(service.deleteProgramPermanently(program.id, "DELETE WRONG", user)).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.mentorshipProgram.delete).not.toHaveBeenCalled();
   });
 
   it("rejects a mentee eligibility decision for a mentor application", async () => {

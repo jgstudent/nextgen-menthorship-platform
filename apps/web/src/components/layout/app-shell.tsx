@@ -33,7 +33,7 @@ const staffLinks: PilyeLink[] = [
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
-  const hideShell = pathname === "/login" || pathname === "/register" || pathname === "/forgot-password" || Boolean(pathname?.startsWith("/apply/mentorship/"));
+  const hideShell = pathname === "/login" || pathname === "/register" || pathname === "/forgot-password" || Boolean(pathname?.startsWith("/apply/mentorship/")) || Boolean(pathname?.startsWith("/activate/"));
   const organizationsQuery = useQuery({
     queryKey: ["organizations", "pilye-shell"],
     queryFn: () => api<Organization[]>("/organizations"),

@@ -19,7 +19,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 const publicPaths = new Set(["/login", "/register", "/forgot-password"]);
 
 function isPublicRoute(pathname?: string | null) {
-  return publicPaths.has(pathname ?? "") || Boolean(pathname?.startsWith("/apply/mentorship/"));
+  return publicPaths.has(pathname ?? "") || Boolean(pathname?.startsWith("/apply/mentorship/")) || Boolean(pathname?.startsWith("/activate/"));
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {

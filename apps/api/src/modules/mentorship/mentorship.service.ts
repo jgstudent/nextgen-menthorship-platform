@@ -1,7 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { randomUUID } from "node:crypto";
-import { MentorshipApplicationSource, MentorshipApplicationStatus, MentorshipAttendanceStatus, MentorshipCohortStatus, MentorshipGoalStatus, MentorshipMatchStatus, MentorshipParticipantRole, MentorshipParticipantStatus, MentorshipProgramStatus, MentorshipResourceAssignmentStatus, MentorshipServiceHourStatus, MentorshipSessionStatus, MentorshipStipendStatus, Prisma } from "@prisma/client";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { MentorshipApplicationSource, MentorshipApplicationStatus, MentorshipAttendanceStatus, MentorshipCohortStatus, MentorshipGoalStatus, MentorshipMatchStatus, MentorshipParticipantRole, MentorshipParticipantStatus, MentorshipProgramStatus, MentorshipResourceAssignmentStatus, MentorshipServiceHourStatus, MentorshipSessionStatus, MentorshipStipendStatus, Prisma, UserRole, UserStatus } from "@prisma/client";
+import * as argon2 from "argon2";
 import { AuthenticatedUser } from "../../common/types/authenticated-user";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateMentorshipCohortDto } from "./dto/create-mentorship-cohort.dto";
@@ -158,6 +159,20 @@ export class MentorshipService {
     const program = await this.prisma.mentorshipProgram.update({ where: { id }, data: { status: MentorshipProgramStatus.ARCHIVED }, include: programInclude });
     await this.audit(user, existing.organizationId, "mentorship.program.archived", "MentorshipProgram", id, { name: existing.name });
     return program;
+  }
+
+  async deleteProgramPermanently(id: string, confirmation: string, user: AuthenticatedUser) {
+    const program = await this.prisma.mentorshipProgram.findUnique({
+      where: { id },
+      include: { _count: { select: { cohorts: true, applications: true, participants: true, relationships: true, resources: true } } }
+    });
+    if (!program) throw new NotFoundException("Mentorship program not found.");
+    if (confirmation !== `DELETE ${program.code}`) throw new BadRequestException(`Type DELETE ${program.code} to permanently delete this program.`);
+    await this.prisma.$transaction(async (transaction) => {
+      await transaction.mentorshipProgram.delete({ where: { id } });
+      await transaction.organizationAuditLog.create({ data: { organizationId: program.organizationId, actorId: user.sub, action: "mentorship.program.permanently_deleted", entityType: "MentorshipProgram", entityId: id, metadata: { name: program.name, code: program.code, deletedCounts: program._count } } });
+    });
+    return { success: true, deletedProgramId: id, deletedCounts: program._count };
   }
 
   async createCohort(programId: string, dto: CreateMentorshipCohortDto, user: AuthenticatedUser) {
@@ -333,13 +348,31 @@ export class MentorshipService {
       }
     }
 
+    const invitationToken = approved ? randomBytes(32).toString("base64url") : undefined;
+    const invitationTokenHash = invitationToken ? createHash("sha256").update(invitationToken).digest("hex") : undefined;
+    const placeholderPassword = approved ? await argon2.hash(randomBytes(32).toString("base64url")) : undefined;
     const result = await this.prisma.$transaction(async (transaction) => {
-      const reviewed = await transaction.mentorshipApplication.update({ where: { id: applicationId }, data: { status: dto.decision, reviewedById: user.sub, reviewNotes: dto.notes, reviewedAt: new Date() }, include: applicationInclude });
+      const normalizedEmail = application.email.trim().toLowerCase();
+      let account = approved ? await transaction.user.findUnique({ where: { email: normalizedEmail } }) : null;
+      if (approved && !account) {
+        account = await transaction.user.create({
+          data: {
+            email: normalizedEmail,
+            firstName: application.firstName.trim(),
+            lastName: application.lastName.trim(),
+            password: placeholderPassword!,
+            role: application.role === MentorshipParticipantRole.MENTEE ? UserRole.BENEFICIARY : UserRole.VOLUNTEER,
+            status: UserStatus.INVITED,
+            isActive: false
+          }
+        });
+      }
+      const reviewed = await transaction.mentorshipApplication.update({ where: { id: applicationId }, data: { status: dto.decision, reviewedById: user.sub, reviewNotes: dto.notes, reviewedAt: new Date(), applicantUserId: account?.id }, include: applicationInclude });
       if (approved) {
         await transaction.mentorshipParticipant.upsert({
           where: { applicationId },
-          create: { applicationId, programId, cohortId: application.cohortId, userId: application.applicantUserId, role: application.role, status: participantStatus, availableForMatch },
-          update: { status: participantStatus, availableForMatch }
+          create: { applicationId, programId, cohortId: application.cohortId, userId: account?.id, role: application.role, status: participantStatus, availableForMatch },
+          update: { userId: account?.id, status: participantStatus, availableForMatch }
         });
       }
       const decisionLabel = dto.decision === MentorshipApplicationStatus.NEEDS_INFORMATION
@@ -352,6 +385,24 @@ export class MentorshipService {
         : approved
           ? `Your ${this.roleLabel(application.role)} application for ${program.name} has been accepted${participantStatus === MentorshipParticipantStatus.WAITLISTED ? " and placed on the waitlist" : ""}.`
           : `Your ${this.roleLabel(application.role)} application for ${program.name} was not selected for this cohort.`;
+      let activationUrl: string | undefined;
+      if (approved && account?.status === UserStatus.INVITED && invitationToken && invitationTokenHash) {
+        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        await transaction.mentorshipAccountInvitation.upsert({
+          where: { applicationId },
+          create: { programId, applicationId, userId: account.id, tokenHash: invitationTokenHash, expiresAt },
+          update: { userId: account.id, tokenHash: invitationTokenHash, expiresAt, acceptedAt: null }
+        });
+        const webAppUrl = (this.config.get<string>("WEB_APP_URL") ?? "http://localhost:3100").replace(/\/$/, "");
+        activationUrl = `${webAppUrl}/activate/${invitationToken}`;
+      }
+      const accountInstructions = !approved
+        ? ""
+        : activationUrl
+          ? `\n\nActivate your Pilye account within 7 days:\n${activationUrl}`
+          : account?.status === UserStatus.ACTIVE
+            ? `\n\nYour application has been linked to your existing Pilye account. Sign in at ${(this.config.get<string>("WEB_APP_URL") ?? "http://localhost:3100").replace(/\/$/, "")}/login.`
+            : "\n\nYour application was linked to an existing account. Contact the program team if you cannot sign in.";
       const queued = await transaction.mentorshipEmailOutbox.create({
         data: {
           organizationId: program.organizationId,
@@ -359,7 +410,7 @@ export class MentorshipService {
           applicationId,
           recipient: application.email,
           subject: `${decisionLabel} — ${program.name}`,
-          body: `${decisionMessage}${dto.notes ? `\n\nMessage from the review team:\n${dto.notes}` : ""}\n\nPlease contact ${program.organization.supportEmail ?? "the organization"} if you have questions.`
+          body: `${decisionMessage}${dto.notes ? `\n\nMessage from the review team:\n${dto.notes}` : ""}${accountInstructions}\n\nPlease contact ${program.organization.supportEmail ?? "the organization"} if you have questions.`
         }
       });
       return { reviewed, emailOutboxId: queued.id };

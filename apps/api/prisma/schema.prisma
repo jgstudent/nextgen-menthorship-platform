@@ -345,79 +345,80 @@ enum ResolutionStatus {
 }
 
 model User {
-  id          String            @id @default(cuid())
-  email       String            @unique
-  password    String
-  firstName   String
-  lastName    String
-  role        UserRole          @default(TEAM_MEMBER)
-  status      UserStatus        @default(ACTIVE)
-  avatarUrl   String?
-  isActive    Boolean           @default(true)
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  memberships WorkspaceMember[]
-  assigned    Item[]            @relation("TaskAssignee")
-  comments    Comment[]
-  approvalsRequested Approval[] @relation("ApprovalRequester")
-  approvalsAssigned Approval[] @relation("ApprovalAssignee")
-  approvalComments ApprovalComment[]
-  approvalHistory ApprovalHistory[] @relation("ApprovalHistoryActor")
-  documentsCreated Document[] @relation("DocumentCreator")
-  documentSubmissionsRequested DocumentSubmission[] @relation("DocumentSubmissionRequester")
-  submissionSigners SubmissionSigner[] @relation("SubmissionSignerUser")
-  policiesCreated Policy[] @relation("PolicyCreator")
-  policiesApproved Policy[] @relation("PolicyApprover")
-  resolutionsCreated BoardResolution[] @relation("ResolutionCreator")
-  activities  ActivityLog[]
-  files       File[]
-  meetingsCreated Meeting[] @relation("MeetingCreator")
-  meetingAttendees MeetingAttendee[]
-  meetingActionItems MeetingActionItem[] @relation("MeetingActionAssignee")
-  beneficiaryProfile Beneficiary? @relation("BeneficiaryUser")
-  beneficiariesMentored Beneficiary[] @relation("BeneficiaryMentor")
-  programEnrollmentsMentored ProgramEnrollment[] @relation("EnrollmentMentor")
-  ownedPrograms Program[] @relation("ProgramOwner")
-  instructedWorkshops Workshop[] @relation("WorkshopInstructor")
-  workshopEnrollments WorkshopEnrollment[]
-  programAssignments UserProgramAssignment[]
-  projectAssignments UserProjectAssignment[]
-  mentorAssignments MentorAssignment[] @relation("MentorAssignmentMentor")
-  auditLogs OrganizationAuditLog[] @relation("AuditActor")
-  ownedMentorshipPrograms MentorshipProgram[] @relation("MentorshipProgramOwner")
-  mentorshipApplications MentorshipApplication[] @relation("MentorshipApplicantUser")
-  mentorshipReviews MentorshipApplication[] @relation("MentorshipApplicationReviewer")
-  mentorshipParticipants MentorshipParticipant[]
-  mentorshipMatchesApproved MentorshipMatch[] @relation("MentorshipMatchApprover")
-  mentorshipSessionsCreated MentorshipSession[] @relation("MentorshipSessionCreator")
-  mentorshipProgressUpdates MentorshipProgressUpdate[] @relation("MentorshipProgressAuthor")
-  mentorshipResourcesCreated MentorshipResource[] @relation("MentorshipResourceCreator")
+  id                                   String                         @id @default(cuid())
+  email                                String                         @unique
+  password                             String
+  firstName                            String
+  lastName                             String
+  role                                 UserRole                       @default(TEAM_MEMBER)
+  status                               UserStatus                     @default(ACTIVE)
+  avatarUrl                            String?
+  isActive                             Boolean                        @default(true)
+  createdAt                            DateTime                       @default(now())
+  updatedAt                            DateTime                       @updatedAt
+  memberships                          WorkspaceMember[]
+  assigned                             Item[]                         @relation("TaskAssignee")
+  comments                             Comment[]
+  approvalsRequested                   Approval[]                     @relation("ApprovalRequester")
+  approvalsAssigned                    Approval[]                     @relation("ApprovalAssignee")
+  approvalComments                     ApprovalComment[]
+  approvalHistory                      ApprovalHistory[]              @relation("ApprovalHistoryActor")
+  documentsCreated                     Document[]                     @relation("DocumentCreator")
+  documentSubmissionsRequested         DocumentSubmission[]           @relation("DocumentSubmissionRequester")
+  submissionSigners                    SubmissionSigner[]             @relation("SubmissionSignerUser")
+  policiesCreated                      Policy[]                       @relation("PolicyCreator")
+  policiesApproved                     Policy[]                       @relation("PolicyApprover")
+  resolutionsCreated                   BoardResolution[]              @relation("ResolutionCreator")
+  activities                           ActivityLog[]
+  files                                File[]
+  meetingsCreated                      Meeting[]                      @relation("MeetingCreator")
+  meetingAttendees                     MeetingAttendee[]
+  meetingActionItems                   MeetingActionItem[]            @relation("MeetingActionAssignee")
+  beneficiaryProfile                   Beneficiary?                   @relation("BeneficiaryUser")
+  beneficiariesMentored                Beneficiary[]                  @relation("BeneficiaryMentor")
+  programEnrollmentsMentored           ProgramEnrollment[]            @relation("EnrollmentMentor")
+  ownedPrograms                        Program[]                      @relation("ProgramOwner")
+  instructedWorkshops                  Workshop[]                     @relation("WorkshopInstructor")
+  workshopEnrollments                  WorkshopEnrollment[]
+  programAssignments                   UserProgramAssignment[]
+  projectAssignments                   UserProjectAssignment[]
+  mentorAssignments                    MentorAssignment[]             @relation("MentorAssignmentMentor")
+  auditLogs                            OrganizationAuditLog[]         @relation("AuditActor")
+  ownedMentorshipPrograms              MentorshipProgram[]            @relation("MentorshipProgramOwner")
+  mentorshipApplications               MentorshipApplication[]        @relation("MentorshipApplicantUser")
+  mentorshipReviews                    MentorshipApplication[]        @relation("MentorshipApplicationReviewer")
+  mentorshipParticipants               MentorshipParticipant[]
+  mentorshipMatchesApproved            MentorshipMatch[]              @relation("MentorshipMatchApprover")
+  mentorshipSessionsCreated            MentorshipSession[]            @relation("MentorshipSessionCreator")
+  mentorshipProgressUpdates            MentorshipProgressUpdate[]     @relation("MentorshipProgressAuthor")
+  mentorshipResourcesCreated           MentorshipResource[]           @relation("MentorshipResourceCreator")
   mentorshipResourceAssignmentsCreated MentorshipResourceAssignment[] @relation("MentorshipResourceAssigner")
-  mentorshipServiceHoursSubmitted MentorshipServiceHour[] @relation("MentorshipServiceHourSubmitter")
-  mentorshipServiceHoursReviewed MentorshipServiceHour[] @relation("MentorshipServiceHourReviewer")
-  mentorshipStipendDecisions MentorshipStipendDecision[] @relation("MentorshipStipendDecisionReviewer")
+  mentorshipServiceHoursSubmitted      MentorshipServiceHour[]        @relation("MentorshipServiceHourSubmitter")
+  mentorshipServiceHoursReviewed       MentorshipServiceHour[]        @relation("MentorshipServiceHourReviewer")
+  mentorshipStipendDecisions           MentorshipStipendDecision[]    @relation("MentorshipStipendDecisionReviewer")
+  mentorshipAccountInvitations         MentorshipAccountInvitation[]
 }
 
 model Organization {
-  id          String      @id @default(cuid())
-  name        String
-  slug        String      @unique
-  displayName String?
-  supportEmail String?
-  logoUrl     String?
-  websiteUrl  String?
-  missionSummary String?
-  enabledAddOns String[] @default([])
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  workspaces  Workspace[]
-  projects    Project[]
-  meetings    Meeting[]
-  beneficiaries Beneficiary[]
-  auditLogs   OrganizationAuditLog[]
-  mentorshipPrograms MentorshipProgram[]
+  id                      String                   @id @default(cuid())
+  name                    String
+  slug                    String                   @unique
+  displayName             String?
+  supportEmail            String?
+  logoUrl                 String?
+  websiteUrl              String?
+  missionSummary          String?
+  enabledAddOns           String[]                 @default([])
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  workspaces              Workspace[]
+  projects                Project[]
+  meetings                Meeting[]
+  beneficiaries           Beneficiary[]
+  auditLogs               OrganizationAuditLog[]
+  mentorshipPrograms      MentorshipProgram[]
   mentorshipNotifications MentorshipNotification[]
-  mentorshipEmailOutbox MentorshipEmailOutbox[]
+  mentorshipEmailOutbox   MentorshipEmailOutbox[]
 }
 
 model Workspace {
@@ -456,29 +457,29 @@ model WorkspaceMember {
 }
 
 model Project {
-  id             String        @id @default(cuid())
-  organizationId String
-  workspaceId    String
-  programId      String?
-  name           String
-  slug           String
-  description    String?
-  status         ProjectStatus @default(PLANNING)
-  startDate      DateTime?
-  dueDate        DateTime?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  workspace      Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  program        Program?      @relation(fields: [programId], references: [id], onDelete: SetNull)
-  boards         Board[]
-  activityLogs   ActivityLog[]
-  files          File[]
-  meetings       Meeting[]
+  id                     String                  @id @default(cuid())
+  organizationId         String
+  workspaceId            String
+  programId              String?
+  name                   String
+  slug                   String
+  description            String?
+  status                 ProjectStatus           @default(PLANNING)
+  startDate              DateTime?
+  dueDate                DateTime?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  organization           Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workspace              Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  program                Program?                @relation(fields: [programId], references: [id], onDelete: SetNull)
+  boards                 Board[]
+  activityLogs           ActivityLog[]
+  files                  File[]
+  meetings               Meeting[]
   beneficiaryAssignments BeneficiaryProject[]
-  userAssignments UserProjectAssignment[]
-  approvals      Approval[]
-  documents      Document[]
+  userAssignments        UserProjectAssignment[]
+  approvals              Approval[]
+  documents              Document[]
 
   @@unique([workspaceId, slug])
   @@index([programId])
@@ -499,15 +500,15 @@ model UserProjectAssignment {
 }
 
 model Board {
-  id          String       @id @default(cuid())
+  id          String        @id @default(cuid())
   workspaceId String
   projectId   String
   name        String
   description String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project     Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
   groups      BoardGroup[]
   columns     BoardColumn[]
   items       Item[]
@@ -541,28 +542,28 @@ model BoardColumn {
 }
 
 model Item {
-  id          String      @id @default(cuid())
-  boardId     String
-  groupId     String?
-  title       String
-  description String?
-  status      TaskStatus  @default(NOT_STARTED)
-  priority    Priority    @default(MEDIUM)
-  assigneeId  String?
-  startDate   DateTime?
-  dueDate     DateTime?
-  order       Int         @default(0)
-  archivedAt  DateTime?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  board       Board       @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  group       BoardGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
-  assignee    User?       @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
-  values      ItemValue[]
-  comments    Comment[]
-  files       File[]
-  approvals   Approval[]
-  documents   Document[]
+  id                          String              @id @default(cuid())
+  boardId                     String
+  groupId                     String?
+  title                       String
+  description                 String?
+  status                      TaskStatus          @default(NOT_STARTED)
+  priority                    Priority            @default(MEDIUM)
+  assigneeId                  String?
+  startDate                   DateTime?
+  dueDate                     DateTime?
+  order                       Int                 @default(0)
+  archivedAt                  DateTime?
+  createdAt                   DateTime            @default(now())
+  updatedAt                   DateTime            @updatedAt
+  board                       Board               @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  group                       BoardGroup?         @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  assignee                    User?               @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  values                      ItemValue[]
+  comments                    Comment[]
+  files                       File[]
+  approvals                   Approval[]
+  documents                   Document[]
   convertedMeetingActionItems MeetingActionItem[] @relation("ConvertedMeetingTask")
 
   @@index([archivedAt])
@@ -595,7 +596,7 @@ model Comment {
 }
 
 model File {
-  id           String   @id @default(cuid())
+  id           String     @id @default(cuid())
   originalName String
   storedName   String
   mimeType     String
@@ -607,12 +608,12 @@ model File {
   taskId       String?
   projectId    String?
   commentId    String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  uploadedBy   User     @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
-  task         Item?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  project      Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  comment      Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  uploadedBy   User       @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  task         Item?      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  project      Project?   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  comment      Comment?   @relation(fields: [commentId], references: [id], onDelete: Cascade)
   approvals    Approval[]
   documents    Document[]
   policies     Policy[]
@@ -639,27 +640,27 @@ model ActivityLog {
 }
 
 model Program {
-  id          String            @id @default(cuid())
-  name        String
-  description String?
-  category    String
-  visibility  ProgramVisibility @default(INTERNAL)
-  status      ProgramStatus     @default(PLANNING)
-  ownerId     String?
-  workspaceId String
-  startDate   DateTime?
-  endDate     DateTime?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  owner       User?             @relation("ProgramOwner", fields: [ownerId], references: [id], onDelete: SetNull)
-  workspace   Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  projects    Project[]
-  enrollments ProgramEnrollment[]
-  workshops   Workshop[]
+  id                String                  @id @default(cuid())
+  name              String
+  description       String?
+  category          String
+  visibility        ProgramVisibility       @default(INTERNAL)
+  status            ProgramStatus           @default(PLANNING)
+  ownerId           String?
+  workspaceId       String
+  startDate         DateTime?
+  endDate           DateTime?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  owner             User?                   @relation("ProgramOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  workspace         Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  projects          Project[]
+  enrollments       ProgramEnrollment[]
+  workshops         Workshop[]
   mentorAssignments MentorAssignment[]
-  userAssignments UserProgramAssignment[]
-  approvals Approval[]
-  documents Document[]
+  userAssignments   UserProgramAssignment[]
+  approvals         Approval[]
+  documents         Document[]
 
   @@index([workspaceId])
   @@index([ownerId])
@@ -681,31 +682,31 @@ model UserProgramAssignment {
 }
 
 model Beneficiary {
-  id               String                   @id @default(cuid())
-  organizationId   String
-  userId           String?                  @unique
-  firstName        String
-  lastName         String
-  email            String?
-  phone            String?
-  dateOfBirth      DateTime?
-  country          String
-  city             String?
-  programStatus    BeneficiaryProgramStatus @default(APPLICANT)
-  notes            String?
-  assignedMentorId String?
-  onboardingDate   DateTime
-  createdAt        DateTime                 @default(now())
-  updatedAt        DateTime                 @updatedAt
-  organization     Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user             User?                    @relation("BeneficiaryUser", fields: [userId], references: [id], onDelete: SetNull)
-  assignedMentor   User?                    @relation("BeneficiaryMentor", fields: [assignedMentorId], references: [id], onDelete: SetNull)
-  enrollments      ProgramEnrollment[]
-  projectAssignments BeneficiaryProject[]
+  id                  String                   @id @default(cuid())
+  organizationId      String
+  userId              String?                  @unique
+  firstName           String
+  lastName            String
+  email               String?
+  phone               String?
+  dateOfBirth         DateTime?
+  country             String
+  city                String?
+  programStatus       BeneficiaryProgramStatus @default(APPLICANT)
+  notes               String?
+  assignedMentorId    String?
+  onboardingDate      DateTime
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+  organization        Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user                User?                    @relation("BeneficiaryUser", fields: [userId], references: [id], onDelete: SetNull)
+  assignedMentor      User?                    @relation("BeneficiaryMentor", fields: [assignedMentorId], references: [id], onDelete: SetNull)
+  enrollments         ProgramEnrollment[]
+  projectAssignments  BeneficiaryProject[]
   workshopEnrollments WorkshopEnrollment[]
-  mentorAssignments MentorAssignment[]
-  approvals Approval[]
-  documents Document[]
+  mentorAssignments   MentorAssignment[]
+  approvals           Approval[]
+  documents           Document[]
 
   @@index([organizationId])
   @@index([assignedMentorId])
@@ -745,7 +746,7 @@ model BeneficiaryProject {
 }
 
 model Workshop {
-  id                String             @id @default(cuid())
+  id                String               @id @default(cuid())
   title             String
   description       String?
   programId         String
@@ -755,16 +756,16 @@ model Workshop {
   startTime         DateTime
   endTime           DateTime
   capacity          Int?
-  visibility        WorkshopVisibility @default(INTERNAL)
+  visibility        WorkshopVisibility   @default(INTERNAL)
   archivedAt        DateTime?
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  program           Program            @relation(fields: [programId], references: [id], onDelete: Cascade)
-  instructor        User?              @relation("WorkshopInstructor", fields: [instructorId], references: [id], onDelete: SetNull)
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  program           Program              @relation(fields: [programId], references: [id], onDelete: Cascade)
+  instructor        User?                @relation("WorkshopInstructor", fields: [instructorId], references: [id], onDelete: SetNull)
   enrollments       WorkshopEnrollment[]
   mentorAssignments MentorAssignment[]
-  approvals Approval[]
-  documents Document[]
+  approvals         Approval[]
+  documents         Document[]
 
   @@index([programId])
   @@index([instructorId])
@@ -810,7 +811,7 @@ model MentorAssignment {
 }
 
 model OrganizationAuditLog {
-  id             String       @id @default(cuid())
+  id             String        @id @default(cuid())
   organizationId String?
   actorId        String?
   action         String
@@ -818,9 +819,9 @@ model OrganizationAuditLog {
   entityId       String
   metadata       Json?
   ipAddress      String?
-  timestamp      DateTime     @default(now())
+  timestamp      DateTime      @default(now())
   organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  actor          User?        @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  actor          User?         @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
 
   @@index([organizationId])
   @@index([actorId])
@@ -829,40 +830,41 @@ model OrganizationAuditLog {
 }
 
 model MentorshipProgram {
-  id                  String                  @id @default(cuid())
-  organizationId      String
-  ownerId             String?
-  name                String
-  code                String
-  description         String?
-  status              MentorshipProgramStatus @default(DRAFT)
-  programType         String
-  defaultDuration     String?
-  defaultMeetingMode  MentorshipMeetingMode   @default(VIRTUAL)
-  maximumParticipants Int?
-  timeZone            String                  @default("America/New_York")
-  applicationsEnabled Boolean                 @default(true)
-  matchingEnabled     Boolean                 @default(true)
-  stipendsEnabled     Boolean                 @default(false)
-  externalProgramId   String?
-  integrationSource   String?
-  publicApplicationsEnabled Boolean                @default(false)
-  publicApplicationToken    String?                @unique
+  id                        String                        @id @default(cuid())
+  organizationId            String
+  ownerId                   String?
+  name                      String
+  code                      String
+  description               String?
+  status                    MentorshipProgramStatus       @default(DRAFT)
+  programType               String
+  defaultDuration           String?
+  defaultMeetingMode        MentorshipMeetingMode         @default(VIRTUAL)
+  maximumParticipants       Int?
+  timeZone                  String                        @default("America/New_York")
+  applicationsEnabled       Boolean                       @default(true)
+  matchingEnabled           Boolean                       @default(true)
+  stipendsEnabled           Boolean                       @default(false)
+  externalProgramId         String?
+  integrationSource         String?
+  publicApplicationsEnabled Boolean                       @default(false)
+  publicApplicationToken    String?                       @unique
   inquiryEmail              String?
-  createdAt           DateTime                @default(now())
-  updatedAt           DateTime                @updatedAt
-  organization        Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  owner               User?                   @relation("MentorshipProgramOwner", fields: [ownerId], references: [id], onDelete: SetNull)
-  cohorts             MentorshipCohort[]
-  applications        MentorshipApplication[]
-  participants        MentorshipParticipant[]
-  matches             MentorshipMatch[]
-  relationships       MentorshipRelationship[]
-  notifications       MentorshipNotification[]
-  emailOutbox          MentorshipEmailOutbox[]
-  resources            MentorshipResource[]
-  serviceHours         MentorshipServiceHour[]
-  stipendDecisions     MentorshipStipendDecision[]
+  createdAt                 DateTime                      @default(now())
+  updatedAt                 DateTime                      @updatedAt
+  organization              Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner                     User?                         @relation("MentorshipProgramOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  cohorts                   MentorshipCohort[]
+  applications              MentorshipApplication[]
+  participants              MentorshipParticipant[]
+  matches                   MentorshipMatch[]
+  relationships             MentorshipRelationship[]
+  notifications             MentorshipNotification[]
+  emailOutbox               MentorshipEmailOutbox[]
+  resources                 MentorshipResource[]
+  serviceHours              MentorshipServiceHour[]
+  stipendDecisions          MentorshipStipendDecision[]
+  accountInvitations        MentorshipAccountInvitation[]
 
   @@unique([organizationId, code])
   @@index([organizationId])
@@ -871,12 +873,12 @@ model MentorshipProgram {
 }
 
 model MentorshipCohort {
-  id                         String                   @id @default(cuid())
+  id                         String                      @id @default(cuid())
   programId                  String
   name                       String
   code                       String
   description                String?
-  status                     MentorshipCohortStatus  @default(DRAFT)
+  status                     MentorshipCohortStatus      @default(DRAFT)
   applicationOpenDate        DateTime?
   applicationCloseDate       DateTime?
   mentorApplicationOpenDate  DateTime?
@@ -891,24 +893,24 @@ model MentorshipCohort {
   maximumTutors              Int?
   targetMentees              Int?
   maximumMentees             Int?
-  waitlistEnabled            Boolean                  @default(true)
+  waitlistEnabled            Boolean                     @default(true)
   mentorEligibility          Json
   tutorEligibility           Json
   menteeEligibility          Json
-  minimumSessions            Int                      @default(0)
-  expectedHours              Int                      @default(0)
+  minimumSessions            Int                         @default(0)
+  expectedHours              Int                         @default(0)
   sessionFrequency           String?
-  matchingEnabled            Boolean                  @default(true)
-  recommendationCount        Int                      @default(5)
-  adminApprovalRequired      Boolean                  @default(true)
+  matchingEnabled            Boolean                     @default(true)
+  recommendationCount        Int                         @default(5)
+  adminApprovalRequired      Boolean                     @default(true)
   matchingWeights            Json
-  stipendEnabled             Boolean                  @default(false)
+  stipendEnabled             Boolean                     @default(false)
   stipendAmountCents         Int?
   stipendPaymentModel        String?
   stipendRequirements        Json?
-  createdAt                  DateTime                  @default(now())
-  updatedAt                  DateTime                  @updatedAt
-  program                    MentorshipProgram        @relation(fields: [programId], references: [id], onDelete: Cascade)
+  createdAt                  DateTime                    @default(now())
+  updatedAt                  DateTime                    @updatedAt
+  program                    MentorshipProgram           @relation(fields: [programId], references: [id], onDelete: Cascade)
   applications               MentorshipApplication[]
   participants               MentorshipParticipant[]
   matches                    MentorshipMatch[]
@@ -923,55 +925,56 @@ model MentorshipCohort {
 }
 
 model MentorshipApplication {
-  id                   String                       @id @default(cuid())
-  programId            String
-  cohortId             String
-  applicantUserId      String?
-  reviewedById         String?
-  role                 MentorshipParticipantRole
-  source               MentorshipApplicationSource @default(ADMIN_CREATED)
-  status               MentorshipApplicationStatus @default(DRAFT)
-  firstName            String
-  lastName             String
-  email                String
-  phone                String?
-  timeZone             String
-  languages            Json
-  locationRegion       String?
-  institution          String?
-  degreeProgram        String?
-  major                String?
-  minor                String?
-  academicLevel        String?
-  graduationYear       Int?
-  gpa                  Float?
-  disciplines          Json
-  expertise            Json
+  id                    String                       @id @default(cuid())
+  programId             String
+  cohortId              String
+  applicantUserId       String?
+  reviewedById          String?
+  role                  MentorshipParticipantRole
+  source                MentorshipApplicationSource  @default(ADMIN_CREATED)
+  status                MentorshipApplicationStatus  @default(DRAFT)
+  firstName             String
+  lastName              String
+  email                 String
+  phone                 String?
+  timeZone              String
+  languages             Json
+  locationRegion        String?
+  institution           String?
+  degreeProgram         String?
+  major                 String?
+  minor                 String?
+  academicLevel         String?
+  graduationYear        Int?
+  gpa                   Float?
+  disciplines           Json
+  expertise             Json
   mentoringCapabilities Json
-  supportNeeds         Json
-  careerInterests      Json
-  availability         Json
-  meetingMode          MentorshipMeetingMode?
-  hoursPerWeek         Int?
-  maximumMentees       Int?
-  primaryObjective     String?
-  goals                String?
-  currentChallenge     String?
-  motivation           String?
-  experience           String?
-  consentItems         Json
-  reviewNotes          String?
-  submittedAt          DateTime?
-  reviewedAt           DateTime?
-  createdAt            DateTime                     @default(now())
-  updatedAt            DateTime                     @updatedAt
-  program              MentorshipProgram            @relation(fields: [programId], references: [id], onDelete: Cascade)
-  cohort               MentorshipCohort             @relation(fields: [cohortId], references: [id], onDelete: Cascade)
-  applicantUser        User?                        @relation("MentorshipApplicantUser", fields: [applicantUserId], references: [id], onDelete: SetNull)
-  reviewedBy           User?                        @relation("MentorshipApplicationReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
-  participant          MentorshipParticipant?
-  notifications        MentorshipNotification[]
+  supportNeeds          Json
+  careerInterests       Json
+  availability          Json
+  meetingMode           MentorshipMeetingMode?
+  hoursPerWeek          Int?
+  maximumMentees        Int?
+  primaryObjective      String?
+  goals                 String?
+  currentChallenge      String?
+  motivation            String?
+  experience            String?
+  consentItems          Json
+  reviewNotes           String?
+  submittedAt           DateTime?
+  reviewedAt            DateTime?
+  createdAt             DateTime                     @default(now())
+  updatedAt             DateTime                     @updatedAt
+  program               MentorshipProgram            @relation(fields: [programId], references: [id], onDelete: Cascade)
+  cohort                MentorshipCohort             @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  applicantUser         User?                        @relation("MentorshipApplicantUser", fields: [applicantUserId], references: [id], onDelete: SetNull)
+  reviewedBy            User?                        @relation("MentorshipApplicationReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  participant           MentorshipParticipant?
+  notifications         MentorshipNotification[]
   emailOutbox           MentorshipEmailOutbox[]
+  accountInvitation     MentorshipAccountInvitation?
 
   @@unique([cohortId, email, role])
   @@index([programId])
@@ -982,61 +985,80 @@ model MentorshipApplication {
 }
 
 model MentorshipNotification {
-  id            String                @id @default(cuid())
+  id             String                @id @default(cuid())
   organizationId String
-  programId     String
-  applicationId String
-  title         String
-  message       String
-  readAt        DateTime?
-  createdAt     DateTime              @default(now())
-  organization  Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  program       MentorshipProgram     @relation(fields: [programId], references: [id], onDelete: Cascade)
-  application   MentorshipApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  programId      String
+  applicationId  String
+  title          String
+  message        String
+  readAt         DateTime?
+  createdAt      DateTime              @default(now())
+  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  program        MentorshipProgram     @relation(fields: [programId], references: [id], onDelete: Cascade)
+  application    MentorshipApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, readAt])
   @@index([programId])
 }
 
 model MentorshipEmailOutbox {
-  id            String                @id @default(cuid())
+  id             String                @id @default(cuid())
   organizationId String
-  programId     String
-  applicationId String
-  recipient     String
-  subject       String
-  body          String
-  sentAt        DateTime?
-  lastError     String?
-  createdAt     DateTime              @default(now())
-  organization  Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  program       MentorshipProgram     @relation(fields: [programId], references: [id], onDelete: Cascade)
-  application   MentorshipApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  programId      String
+  applicationId  String
+  recipient      String
+  subject        String
+  body           String
+  sentAt         DateTime?
+  lastError      String?
+  createdAt      DateTime              @default(now())
+  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  program        MentorshipProgram     @relation(fields: [programId], references: [id], onDelete: Cascade)
+  application    MentorshipApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 
   @@index([sentAt, createdAt])
   @@index([organizationId])
 }
 
+model MentorshipAccountInvitation {
+  id            String                @id @default(cuid())
+  programId     String
+  applicationId String                @unique
+  userId        String
+  tokenHash     String                @unique
+  expiresAt     DateTime
+  acceptedAt    DateTime?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  program       MentorshipProgram     @relation(fields: [programId], references: [id], onDelete: Cascade)
+  application   MentorshipApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([programId])
+  @@index([userId])
+  @@index([expiresAt])
+}
+
 model MentorshipParticipant {
-  id                 String                      @id @default(cuid())
-  applicationId      String                      @unique
-  programId          String
-  cohortId           String
-  userId             String?
-  role               MentorshipParticipantRole
-  status             MentorshipParticipantStatus @default(MATCHING_POOL)
-  availableForMatch  Boolean                     @default(true)
-  approvedAt         DateTime                    @default(now())
-  createdAt          DateTime                    @default(now())
-  updatedAt          DateTime                    @updatedAt
-  application        MentorshipApplication       @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  program            MentorshipProgram           @relation(fields: [programId], references: [id], onDelete: Cascade)
-  cohort             MentorshipCohort            @relation(fields: [cohortId], references: [id], onDelete: Cascade)
-  user               User?                       @relation(fields: [userId], references: [id], onDelete: SetNull)
-  matchesAsMentee    MentorshipMatch[]            @relation("MentorshipMatchMentee")
-  matchesAsProvider  MentorshipMatch[]            @relation("MentorshipMatchProvider")
-  relationshipsAsMentee   MentorshipRelationship[] @relation("MentorshipRelationshipMentee")
-  relationshipsAsProvider MentorshipRelationship[] @relation("MentorshipRelationshipProvider")
+  id                      String                         @id @default(cuid())
+  applicationId           String                         @unique
+  programId               String
+  cohortId                String
+  userId                  String?
+  role                    MentorshipParticipantRole
+  status                  MentorshipParticipantStatus    @default(MATCHING_POOL)
+  availableForMatch       Boolean                        @default(true)
+  approvedAt              DateTime                       @default(now())
+  createdAt               DateTime                       @default(now())
+  updatedAt               DateTime                       @updatedAt
+  application             MentorshipApplication          @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  program                 MentorshipProgram              @relation(fields: [programId], references: [id], onDelete: Cascade)
+  cohort                  MentorshipCohort               @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  user                    User?                          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  matchesAsMentee         MentorshipMatch[]              @relation("MentorshipMatchMentee")
+  matchesAsProvider       MentorshipMatch[]              @relation("MentorshipMatchProvider")
+  relationshipsAsMentee   MentorshipRelationship[]       @relation("MentorshipRelationshipMentee")
+  relationshipsAsProvider MentorshipRelationship[]       @relation("MentorshipRelationshipProvider")
   resourceAssignments     MentorshipResourceAssignment[]
   serviceHours            MentorshipServiceHour[]
   stipendDecision         MentorshipStipendDecision?
@@ -1048,24 +1070,24 @@ model MentorshipParticipant {
 }
 
 model MentorshipMatch {
-  id                    String                @id @default(cuid())
+  id                    String                  @id @default(cuid())
   programId             String
   cohortId              String
   menteeParticipantId   String
   providerParticipantId String
-  status                MentorshipMatchStatus @default(PROPOSED)
+  status                MentorshipMatchStatus   @default(PROPOSED)
   score                 Int
   scoreBreakdown        Json
   approvedById          String?
   approvedAt            DateTime?
   notes                 String?
-  createdAt             DateTime              @default(now())
-  updatedAt             DateTime              @updatedAt
-  program               MentorshipProgram     @relation(fields: [programId], references: [id], onDelete: Cascade)
-  cohort                MentorshipCohort      @relation(fields: [cohortId], references: [id], onDelete: Cascade)
-  mentee                MentorshipParticipant @relation("MentorshipMatchMentee", fields: [menteeParticipantId], references: [id], onDelete: Cascade)
-  provider              MentorshipParticipant @relation("MentorshipMatchProvider", fields: [providerParticipantId], references: [id], onDelete: Cascade)
-  approvedBy            User?                 @relation("MentorshipMatchApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  program               MentorshipProgram       @relation(fields: [programId], references: [id], onDelete: Cascade)
+  cohort                MentorshipCohort        @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  mentee                MentorshipParticipant   @relation("MentorshipMatchMentee", fields: [menteeParticipantId], references: [id], onDelete: Cascade)
+  provider              MentorshipParticipant   @relation("MentorshipMatchProvider", fields: [providerParticipantId], references: [id], onDelete: Cascade)
+  approvedBy            User?                   @relation("MentorshipMatchApprover", fields: [approvedById], references: [id], onDelete: SetNull)
   relationship          MentorshipRelationship?
 
   @@unique([cohortId, menteeParticipantId, providerParticipantId])
@@ -1074,22 +1096,22 @@ model MentorshipMatch {
 }
 
 model MentorshipRelationship {
-  id                    String                       @id @default(cuid())
-  matchId               String                       @unique
+  id                    String                         @id @default(cuid())
+  matchId               String                         @unique
   programId             String
   cohortId              String
   menteeParticipantId   String
   providerParticipantId String
-  status                MentorshipRelationshipStatus @default(ACTIVE)
+  status                MentorshipRelationshipStatus   @default(ACTIVE)
   startDate             DateTime
   endDate               DateTime?
-  createdAt             DateTime                     @default(now())
-  updatedAt             DateTime                     @updatedAt
-  match                 MentorshipMatch              @relation(fields: [matchId], references: [id], onDelete: Cascade)
-  program               MentorshipProgram            @relation(fields: [programId], references: [id], onDelete: Cascade)
-  cohort                MentorshipCohort             @relation(fields: [cohortId], references: [id], onDelete: Cascade)
-  mentee                MentorshipParticipant        @relation("MentorshipRelationshipMentee", fields: [menteeParticipantId], references: [id], onDelete: Cascade)
-  provider              MentorshipParticipant        @relation("MentorshipRelationshipProvider", fields: [providerParticipantId], references: [id], onDelete: Cascade)
+  createdAt             DateTime                       @default(now())
+  updatedAt             DateTime                       @updatedAt
+  match                 MentorshipMatch                @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  program               MentorshipProgram              @relation(fields: [programId], references: [id], onDelete: Cascade)
+  cohort                MentorshipCohort               @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  mentee                MentorshipParticipant          @relation("MentorshipRelationshipMentee", fields: [menteeParticipantId], references: [id], onDelete: Cascade)
+  provider              MentorshipParticipant          @relation("MentorshipRelationshipProvider", fields: [providerParticipantId], references: [id], onDelete: Cascade)
   goals                 MentorshipGoal[]
   sessions              MentorshipSession[]
   progressUpdates       MentorshipProgressUpdate[]
@@ -1103,42 +1125,42 @@ model MentorshipRelationship {
 }
 
 model MentorshipGoal {
-  id             String               @id @default(cuid())
-  relationshipId String
-  title          String
-  description    String?
-  status         MentorshipGoalStatus @default(NOT_STARTED)
-  progressPercent Int                 @default(0)
-  targetDate     DateTime?
-  completedAt    DateTime?
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
-  relationship   MentorshipRelationship @relation(fields: [relationshipId], references: [id], onDelete: Cascade)
+  id                  String                         @id @default(cuid())
+  relationshipId      String
+  title               String
+  description         String?
+  status              MentorshipGoalStatus           @default(NOT_STARTED)
+  progressPercent     Int                            @default(0)
+  targetDate          DateTime?
+  completedAt         DateTime?
+  createdAt           DateTime                       @default(now())
+  updatedAt           DateTime                       @updatedAt
+  relationship        MentorshipRelationship         @relation(fields: [relationshipId], references: [id], onDelete: Cascade)
   resourceAssignments MentorshipResourceAssignment[]
 
   @@index([relationshipId, status])
 }
 
 model MentorshipSession {
-  id                 String                     @id @default(cuid())
-  relationshipId     String
-  title              String
-  scheduledStart     DateTime
-  scheduledEnd       DateTime
-  meetingMode        MentorshipMeetingMode      @default(VIRTUAL)
-  location           String?
-  videoUrl           String?
-  agenda             String?
-  notes              String?
-  status             MentorshipSessionStatus    @default(SCHEDULED)
-  providerAttendance MentorshipAttendanceStatus @default(PENDING)
-  menteeAttendance   MentorshipAttendanceStatus @default(PENDING)
-  completedMinutes   Int                        @default(0)
-  createdById        String
-  createdAt          DateTime                   @default(now())
-  updatedAt          DateTime                   @updatedAt
-  relationship       MentorshipRelationship     @relation(fields: [relationshipId], references: [id], onDelete: Cascade)
-  createdBy          User                       @relation("MentorshipSessionCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  id                  String                         @id @default(cuid())
+  relationshipId      String
+  title               String
+  scheduledStart      DateTime
+  scheduledEnd        DateTime
+  meetingMode         MentorshipMeetingMode          @default(VIRTUAL)
+  location            String?
+  videoUrl            String?
+  agenda              String?
+  notes               String?
+  status              MentorshipSessionStatus        @default(SCHEDULED)
+  providerAttendance  MentorshipAttendanceStatus     @default(PENDING)
+  menteeAttendance    MentorshipAttendanceStatus     @default(PENDING)
+  completedMinutes    Int                            @default(0)
+  createdById         String
+  createdAt           DateTime                       @default(now())
+  updatedAt           DateTime                       @updatedAt
+  relationship        MentorshipRelationship         @relation(fields: [relationshipId], references: [id], onDelete: Cascade)
+  createdBy           User                           @relation("MentorshipSessionCreator", fields: [createdById], references: [id], onDelete: Restrict)
   resourceAssignments MentorshipResourceAssignment[]
   serviceHours        MentorshipServiceHour[]
 
@@ -1164,19 +1186,19 @@ model MentorshipProgressUpdate {
 }
 
 model MentorshipResource {
-  id          String                 @id @default(cuid())
+  id          String                         @id @default(cuid())
   programId   String
   createdById String
   title       String
   description String?
-  type        MentorshipResourceType @default(LINK)
+  type        MentorshipResourceType         @default(LINK)
   url         String
-  tags        String[]               @default([])
+  tags        String[]                       @default([])
   archivedAt  DateTime?
-  createdAt   DateTime               @default(now())
-  updatedAt   DateTime               @updatedAt
-  program     MentorshipProgram      @relation(fields: [programId], references: [id], onDelete: Cascade)
-  createdBy   User                   @relation("MentorshipResourceCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt   DateTime                       @default(now())
+  updatedAt   DateTime                       @updatedAt
+  program     MentorshipProgram              @relation(fields: [programId], references: [id], onDelete: Cascade)
+  createdBy   User                           @relation("MentorshipResourceCreator", fields: [createdById], references: [id], onDelete: Restrict)
   assignments MentorshipResourceAssignment[]
 
   @@index([programId, archivedAt])
@@ -1203,7 +1225,7 @@ model MentorshipResourceAssignment {
   relationship          MentorshipRelationship             @relation(fields: [relationshipId], references: [id], onDelete: Cascade)
   goal                  MentorshipGoal?                    @relation(fields: [goalId], references: [id], onDelete: SetNull)
   session               MentorshipSession?                 @relation(fields: [sessionId], references: [id], onDelete: SetNull)
-  assignee              MentorshipParticipant             @relation(fields: [assigneeParticipantId], references: [id], onDelete: Cascade)
+  assignee              MentorshipParticipant              @relation(fields: [assigneeParticipantId], references: [id], onDelete: Cascade)
   assignedBy            User                               @relation("MentorshipResourceAssigner", fields: [assignedById], references: [id], onDelete: Restrict)
 
   @@index([resourceId, status])
@@ -1215,31 +1237,31 @@ model MentorshipResourceAssignment {
 }
 
 model MentorshipServiceHour {
-  id            String                      @id @default(cuid())
-  programId     String
-  cohortId      String
-  participantId String
+  id             String                      @id @default(cuid())
+  programId      String
+  cohortId       String
+  participantId  String
   relationshipId String
-  sessionId     String?
-  submittedById String
-  reviewedById  String?
-  serviceDate   DateTime
-  minutes       Int
-  activity      String
-  description   String?
-  evidenceUrl   String?
-  status        MentorshipServiceHourStatus @default(SUBMITTED)
-  reviewNotes   String?
-  reviewedAt    DateTime?
-  createdAt     DateTime                    @default(now())
-  updatedAt     DateTime                    @updatedAt
-  program       MentorshipProgram           @relation(fields: [programId], references: [id], onDelete: Cascade)
-  cohort        MentorshipCohort            @relation(fields: [cohortId], references: [id], onDelete: Cascade)
-  participant   MentorshipParticipant       @relation(fields: [participantId], references: [id], onDelete: Cascade)
-  relationship  MentorshipRelationship      @relation(fields: [relationshipId], references: [id], onDelete: Cascade)
-  session       MentorshipSession?           @relation(fields: [sessionId], references: [id], onDelete: SetNull)
-  submittedBy   User                        @relation("MentorshipServiceHourSubmitter", fields: [submittedById], references: [id], onDelete: Restrict)
-  reviewedBy    User?                       @relation("MentorshipServiceHourReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  sessionId      String?
+  submittedById  String
+  reviewedById   String?
+  serviceDate    DateTime
+  minutes        Int
+  activity       String
+  description    String?
+  evidenceUrl    String?
+  status         MentorshipServiceHourStatus @default(SUBMITTED)
+  reviewNotes    String?
+  reviewedAt     DateTime?
+  createdAt      DateTime                    @default(now())
+  updatedAt      DateTime                    @updatedAt
+  program        MentorshipProgram           @relation(fields: [programId], references: [id], onDelete: Cascade)
+  cohort         MentorshipCohort            @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  participant    MentorshipParticipant       @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  relationship   MentorshipRelationship      @relation(fields: [relationshipId], references: [id], onDelete: Cascade)
+  session        MentorshipSession?          @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  submittedBy    User                        @relation("MentorshipServiceHourSubmitter", fields: [submittedById], references: [id], onDelete: Restrict)
+  reviewedBy     User?                       @relation("MentorshipServiceHourReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
 
   @@index([programId, status])
   @@index([cohortId, status])
@@ -1251,22 +1273,22 @@ model MentorshipServiceHour {
 }
 
 model MentorshipStipendDecision {
-  id                    String                   @id @default(cuid())
-  programId             String
-  cohortId              String
-  participantId         String                   @unique
-  reviewedById          String
-  status                MentorshipStipendStatus  @default(PENDING_REVIEW)
-  verifiedMinutesAtDecision Int                  @default(0)
-  notes                 String?
-  decidedAt             DateTime                 @default(now())
-  paidAt                DateTime?
-  createdAt             DateTime                 @default(now())
-  updatedAt             DateTime                 @updatedAt
-  program               MentorshipProgram        @relation(fields: [programId], references: [id], onDelete: Cascade)
-  cohort                MentorshipCohort         @relation(fields: [cohortId], references: [id], onDelete: Cascade)
-  participant           MentorshipParticipant    @relation(fields: [participantId], references: [id], onDelete: Cascade)
-  reviewedBy            User                     @relation("MentorshipStipendDecisionReviewer", fields: [reviewedById], references: [id], onDelete: Restrict)
+  id                        String                  @id @default(cuid())
+  programId                 String
+  cohortId                  String
+  participantId             String                  @unique
+  reviewedById              String
+  status                    MentorshipStipendStatus @default(PENDING_REVIEW)
+  verifiedMinutesAtDecision Int                     @default(0)
+  notes                     String?
+  decidedAt                 DateTime                @default(now())
+  paidAt                    DateTime?
+  createdAt                 DateTime                @default(now())
+  updatedAt                 DateTime                @updatedAt
+  program                   MentorshipProgram       @relation(fields: [programId], references: [id], onDelete: Cascade)
+  cohort                    MentorshipCohort        @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  participant               MentorshipParticipant   @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  reviewedBy                User                    @relation("MentorshipStipendDecisionReviewer", fields: [reviewedById], references: [id], onDelete: Restrict)
 
   @@index([programId, status])
   @@index([cohortId, status])
@@ -1274,12 +1296,12 @@ model MentorshipStipendDecision {
 }
 
 model Approval {
-  id                 String           @id @default(cuid())
+  id                 String            @id @default(cuid())
   title              String
   description        String?
   type               ApprovalType
-  status             ApprovalStatus   @default(DRAFT)
-  priority           ApprovalPriority @default(NORMAL)
+  status             ApprovalStatus    @default(DRAFT)
+  priority           ApprovalPriority  @default(NORMAL)
   requestedById      String
   assignedApproverId String?
   workspaceId        String
@@ -1290,17 +1312,17 @@ model Approval {
   workshopId         String?
   fileId             String?
   dueDate            DateTime?
-  createdAt          DateTime         @default(now())
-  updatedAt          DateTime         @updatedAt
-  requestedBy        User             @relation("ApprovalRequester", fields: [requestedById], references: [id], onDelete: Cascade)
-  assignedApprover   User?            @relation("ApprovalAssignee", fields: [assignedApproverId], references: [id], onDelete: SetNull)
-  workspace          Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  program            Program?         @relation(fields: [programId], references: [id], onDelete: SetNull)
-  project            Project?         @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  task               Item?            @relation(fields: [taskId], references: [id], onDelete: SetNull)
-  beneficiary        Beneficiary?     @relation(fields: [beneficiaryId], references: [id], onDelete: SetNull)
-  workshop           Workshop?        @relation(fields: [workshopId], references: [id], onDelete: SetNull)
-  file               File?            @relation(fields: [fileId], references: [id], onDelete: SetNull)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  requestedBy        User              @relation("ApprovalRequester", fields: [requestedById], references: [id], onDelete: Cascade)
+  assignedApprover   User?             @relation("ApprovalAssignee", fields: [assignedApproverId], references: [id], onDelete: SetNull)
+  workspace          Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  program            Program?          @relation(fields: [programId], references: [id], onDelete: SetNull)
+  project            Project?          @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  task               Item?             @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  beneficiary        Beneficiary?      @relation(fields: [beneficiaryId], references: [id], onDelete: SetNull)
+  workshop           Workshop?         @relation(fields: [workshopId], references: [id], onDelete: SetNull)
+  file               File?             @relation(fields: [fileId], references: [id], onDelete: SetNull)
   comments           ApprovalComment[]
   history            ApprovalHistory[]
   documents          Document[]
@@ -1321,38 +1343,38 @@ model Approval {
 }
 
 model Document {
-  id                String         @id @default(cuid())
-  title             String
-  description       String?
-  status            DocumentStatus @default(DRAFT)
-  createdById       String
-  workspaceId       String
-  programId         String?
-  projectId         String?
-  taskId            String?
-  beneficiaryId     String?
-  workshopId        String?
-  approvalId        String?
-  fileId            String?
+  id                 String               @id @default(cuid())
+  title              String
+  description        String?
+  status             DocumentStatus       @default(DRAFT)
+  createdById        String
+  workspaceId        String
+  programId          String?
+  projectId          String?
+  taskId             String?
+  beneficiaryId      String?
+  workshopId         String?
+  approvalId         String?
+  fileId             String?
   docusealTemplateId String?
-  signedDocumentUrl String?
-  auditTrailUrl     String?
-  sponsorVisible    Boolean        @default(false)
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
-  createdBy         User           @relation("DocumentCreator", fields: [createdById], references: [id], onDelete: Cascade)
-  workspace         Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  program           Program?       @relation(fields: [programId], references: [id], onDelete: SetNull)
-  project           Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  task              Item?          @relation(fields: [taskId], references: [id], onDelete: SetNull)
-  beneficiary       Beneficiary?   @relation(fields: [beneficiaryId], references: [id], onDelete: SetNull)
-  workshop          Workshop?      @relation(fields: [workshopId], references: [id], onDelete: SetNull)
-  approval          Approval?      @relation(fields: [approvalId], references: [id], onDelete: SetNull)
-  file              File?          @relation(fields: [fileId], references: [id], onDelete: SetNull)
-  meetingId         String?
-  meeting           Meeting?       @relation(fields: [meetingId], references: [id], onDelete: SetNull)
-  resolutions       BoardResolution[]
-  submissions       DocumentSubmission[]
+  signedDocumentUrl  String?
+  auditTrailUrl      String?
+  sponsorVisible     Boolean              @default(false)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  createdBy          User                 @relation("DocumentCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  workspace          Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  program            Program?             @relation(fields: [programId], references: [id], onDelete: SetNull)
+  project            Project?             @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  task               Item?                @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  beneficiary        Beneficiary?         @relation(fields: [beneficiaryId], references: [id], onDelete: SetNull)
+  workshop           Workshop?            @relation(fields: [workshopId], references: [id], onDelete: SetNull)
+  approval           Approval?            @relation(fields: [approvalId], references: [id], onDelete: SetNull)
+  file               File?                @relation(fields: [fileId], references: [id], onDelete: SetNull)
+  meetingId          String?
+  meeting            Meeting?             @relation(fields: [meetingId], references: [id], onDelete: SetNull)
+  resolutions        BoardResolution[]
+  submissions        DocumentSubmission[]
 
   @@index([workspaceId])
   @@index([programId])
@@ -1423,10 +1445,10 @@ model BoardResolution {
 }
 
 model DocumentSubmission {
-  id                   String           @id @default(cuid())
+  id                   String             @id @default(cuid())
   documentId           String
   requestedById        String
-  status               SubmissionStatus @default(DRAFT)
+  status               SubmissionStatus   @default(DRAFT)
   docusealSubmissionId String?
   docusealTemplateId   String?
   sentAt               DateTime?
@@ -1434,10 +1456,10 @@ model DocumentSubmission {
   signedDocumentUrl    String?
   auditTrailUrl        String?
   metadata             Json?
-  createdAt            DateTime         @default(now())
-  updatedAt            DateTime         @updatedAt
-  document             Document         @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  requestedBy          User             @relation("DocumentSubmissionRequester", fields: [requestedById], references: [id], onDelete: Cascade)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  document             Document           @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  requestedBy          User               @relation("DocumentSubmissionRequester", fields: [requestedById], references: [id], onDelete: Cascade)
   signers              SubmissionSigner[]
 
   @@index([documentId])
@@ -1447,21 +1469,21 @@ model DocumentSubmission {
 }
 
 model SubmissionSigner {
-  id                 String       @id @default(cuid())
-  submissionId       String
-  userId             String?
-  email              String
-  name               String
-  role               String?
-  status             SignerStatus @default(PENDING)
+  id                  String             @id @default(cuid())
+  submissionId        String
+  userId              String?
+  email               String
+  name                String
+  role                String?
+  status              SignerStatus       @default(PENDING)
   docusealSubmitterId String?
-  signingUrl         String?
-  embeddedUrl        String?
-  signedAt           DateTime?
-  createdAt          DateTime     @default(now())
-  updatedAt          DateTime     @updatedAt
-  submission         DocumentSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
-  user               User?        @relation("SubmissionSignerUser", fields: [userId], references: [id], onDelete: SetNull)
+  signingUrl          String?
+  embeddedUrl         String?
+  signedAt            DateTime?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  submission          DocumentSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  user                User?              @relation("SubmissionSignerUser", fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([submissionId])
   @@index([userId])
@@ -1502,7 +1524,7 @@ model ApprovalHistory {
 }
 
 model Meeting {
-  id             String          @id @default(cuid())
+  id             String              @id @default(cuid())
   organizationId String
   workspaceId    String?
   projectId      String?
@@ -1512,16 +1534,16 @@ model Meeting {
   videoUrl       String?
   startTime      DateTime
   endTime        DateTime
-  status         MeetingStatus   @default(SCHEDULED)
+  status         MeetingStatus       @default(SCHEDULED)
   agenda         String?
   notes          String?
   createdById    String
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  workspace      Workspace?      @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
-  project        Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  createdBy      User            @relation("MeetingCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workspace      Workspace?          @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  project        Project?            @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  createdBy      User                @relation("MeetingCreator", fields: [createdById], references: [id], onDelete: Cascade)
   attendees      MeetingAttendee[]
   actionItems    MeetingActionItem[]
   documents      Document[]

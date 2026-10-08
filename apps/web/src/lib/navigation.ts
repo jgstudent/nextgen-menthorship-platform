@@ -159,7 +159,7 @@ export function visibleNavigationGroups(role?: UserRole, enabledAddOns: string[]
 }
 
 export function canAccessPath(pathname: string | null | undefined, role?: UserRole, enabledAddOns: string[] = []) {
-  if (pathname?.startsWith("/apply/mentorship/")) return true;
+  if (pathname?.startsWith("/apply/mentorship/") || pathname?.startsWith("/activate/")) return true;
   if (pathname === "/programs/mentorship" || pathname?.startsWith("/programs/mentorship/")) {
     return enabledAddOns.includes("MENTORSHIP") && canPreviewMentorship(role);
   }

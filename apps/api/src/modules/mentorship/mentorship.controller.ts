@@ -25,6 +25,7 @@ import { CreateMentorshipResourceDto } from "./dto/create-mentorship-resource.dt
 import { UpdateMentorshipResourceDto } from "./dto/update-mentorship-resource.dto";
 import { ReviewMentorshipServiceHourDto } from "./dto/review-mentorship-service-hour.dto";
 import { UpdateMentorshipStipendDecisionDto } from "./dto/update-mentorship-stipend-decision.dto";
+import { DeleteMentorshipProgramDto } from "./dto/delete-mentorship-program.dto";
 
 @Controller("mentorship")
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -60,6 +61,12 @@ export class MentorshipController {
   @Delete("programs/:programId")
   archiveProgram(@Param("programId") programId: string, @CurrentUser() user: AuthenticatedUser) {
     return this.mentorship.archiveProgram(programId, user);
+  }
+
+  @Delete("programs/:programId/permanent")
+  @Roles(UserRole.SUPER_ADMIN)
+  deleteProgramPermanently(@Param("programId") programId: string, @Body() dto: DeleteMentorshipProgramDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.mentorship.deleteProgramPermanently(programId, dto.confirmation, user);
   }
 
   @Post("programs/:programId/cohorts")
