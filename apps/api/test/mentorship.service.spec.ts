@@ -102,9 +102,16 @@ describe("MentorshipService program and cohort configuration", () => {
 
   it("creates a formal active relationship when an administrator approves a match", async () => {
     await service.decideMatch(program.id, match.id, { decision: MentorshipMatchStatus.APPROVED }, user);
+    expect(prisma.mentorshipRelationship.findFirst).toHaveBeenCalledWith({ where: expect.objectContaining({ provider: { role: MentorshipParticipantRole.MENTOR } }) });
     expect(prisma.mentorshipRelationship.upsert).toHaveBeenCalledWith(expect.objectContaining({ create: expect.objectContaining({ matchId: match.id, menteeParticipantId: "mentee-1", providerParticipantId: "provider-1", status: "ACTIVE" }) }));
     expect(prisma.mentorshipParticipant.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { status: "ACTIVE" } }));
     expect(prisma.mentorshipEmailOutbox.create).toHaveBeenCalledTimes(2);
+  });
+
+  it("blocks a second active provider of the same role for a mentee", async () => {
+    prisma.mentorshipRelationship.findFirst.mockResolvedValueOnce(relationship);
+    await expect(service.decideMatch(program.id, match.id, { decision: MentorshipMatchStatus.APPROVED }, user)).rejects.toThrow("This mentee already has an active mentor relationship in the cohort.");
+    expect(prisma.mentorshipRelationship.upsert).not.toHaveBeenCalled();
   });
 
   it("requires attendance for both people before completing a mentorship session", async () => {

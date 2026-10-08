@@ -841,8 +841,16 @@ export class MentorshipService {
     if (!existing) throw new NotFoundException("Mentorship match not found.");
     const cohort = await this.findCohort(programId, existing.cohortId);
     if (dto.decision === MentorshipMatchStatus.APPROVED) {
-      const active = await this.prisma.mentorshipRelationship.findFirst({ where: { cohortId: existing.cohortId, menteeParticipantId: existing.menteeParticipantId, status: { in: ["ACTIVE", "PAUSED"] }, matchId: { not: matchId } } });
-      if (active) throw new BadRequestException("This mentee already has an active relationship in the cohort.");
+      const active = await this.prisma.mentorshipRelationship.findFirst({
+        where: {
+          cohortId: existing.cohortId,
+          menteeParticipantId: existing.menteeParticipantId,
+          status: { in: ["ACTIVE", "PAUSED"] },
+          matchId: { not: matchId },
+          provider: { role: existing.provider.role }
+        }
+      });
+      if (active) throw new BadRequestException(`This mentee already has an active ${this.roleLabel(existing.provider.role)} relationship in the cohort.`);
     }
     const result = await this.prisma.$transaction(async (transaction) => {
       const decided = await transaction.mentorshipMatch.update({ where: { id: matchId }, data: { status: dto.decision, notes: dto.notes?.trim(), approvedById: dto.decision === MentorshipMatchStatus.APPROVED ? user.sub : null, approvedAt: dto.decision === MentorshipMatchStatus.APPROVED ? new Date() : null } });
